@@ -17,7 +17,6 @@ h1{font-size:28px;margin:0;font-weight:800;letter-spacing:-.02em}h2{font-size:18
 .row{display:flex;gap:8px;overflow-x:auto;padding:2px 0 8px;scrollbar-width:none}.row::-webkit-scrollbar{display:none}
 .chip{flex:none;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:99px;padding:7px 13px;font:500 13px "DM Sans",sans-serif;cursor:pointer}.chip[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
 .tools{display:flex;gap:8px;margin:2px 0 12px}input,select{font:inherit;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:10px;padding:9px 11px;min-width:0}input{flex:1}
-
 :focus-visible{outline:2px solid var(--acc);outline-offset:2px}
 .item{display:grid;grid-template-columns:88px 1fr;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px;margin-bottom:10px}
 .pic{height:88px;border-radius:10px;background:linear-gradient(135deg,var(--tile),var(--line));display:grid;place-items:center;font-size:36px;position:relative;overflow:hidden}.pic img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
@@ -29,6 +28,7 @@ h1{font-size:28px;margin:0;font-weight:800;letter-spacing:-.02em}h2{font-size:18
 .acts{display:flex;gap:8px;margin-top:8px}.acts a,.acts button{font:700 13px "DM Sans",sans-serif;border:1px solid var(--line);background:none;color:var(--ink);border-radius:9px;padding:6px 11px;cursor:pointer;text-decoration:none}.acts a{background:var(--acc);border-color:var(--acc);color:#fff}
 @media (prefers-color-scheme:dark){.acts a{color:#0b1b17}}
 .flow{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:6px 12px}.fl{display:grid;grid-template-columns:90px 1fr auto;gap:10px;align-items:center;padding:8px 0;font-size:13px;border-bottom:1px solid var(--line)}.fl:last-child{border:0}.fl small{color:var(--mute)}
+#scanBtn{background:var(--acc);border-color:var(--acc);color:#fff}@media (prefers-color-scheme:dark){#scanBtn{color:#0b1b17}}
 .empty{text-align:center;color:var(--mute);padding:30px 10px}
 </style></head>
 <body><div class="wrap">
@@ -37,9 +37,8 @@ h1{font-size:28px;margin:0;font-weight:800;letter-spacing:-.02em}h2{font-size:18
 <div class="sum" id="sum"></div>
 <div class="row" id="cats"></div>
 <div class="tools"><input id="q" type="search" placeholder="Search items" aria-label="Search items">
-<select id="sort" aria-label="Sort by"><option value="score">Top score</option><option value="demand">Highest demand</option><option value="margin">Best margin</option><option value="dist">Nearest</option><option value="new">Newest</option></select><button id=\"scanBtn\" class=\"chip\" style=\"background:var(--acc);color:var(--bg);border-color:var(--acc)\">Scan Now</button></div>
-<button id=\"scanBtn\" class=\"chip\" style=\"background:var(--acc);color:var(--bg);border-color:var(--acc)\">Scan Now</button>
-<div class="row"><button class="chip" id="dealsBtn" aria-pressed="false">Profitable only</button><button class="chip" id="savedBtn" aria-pressed="false">Saved</button></div>
+<select id="sort" aria-label="Sort by"><option value="score">Top score</option><option value="demand">Highest demand</option><option value="margin">Best margin</option><option value="dist">Nearest</option><option value="new">Newest</option></select></div>
+<div class="row"><button class="chip" id="dealsBtn" aria-pressed="false">Profitable only</button><button class="chip" id="savedBtn" aria-pressed="false">Saved</button><button class="chip" id="scanBtn">Scan now</button></div>
 <div id="list"></div>
 <h2>Market flow by category</h2><div class="flow" id="flow"></div>
 </div>
@@ -102,37 +101,25 @@ $("cats").onclick=e=>{const b=e.target.closest("button");if(b){cat=b.dataset.c;r
 $("q").oninput=render;$("sort").onchange=render;
 $("dealsBtn").onclick=e=>{dealsOnly=!dealsOnly;e.target.setAttribute("aria-pressed",dealsOnly);render()};
 $("savedBtn").onclick=e=>{savedOnly=!savedOnly;e.target.setAttribute("aria-pressed",savedOnly);render()};
-
-  $(\"scanBtn\").onclick=async e=>{
-    let tk = localStorage.getItem(\"mf-gh-token\");
-    if(!tk) {
-      tk = prompt(\"Enter GitHub Personal Access Token (needs 'repo' scope):\");
-      if(!tk) return;
-      localStorage.setItem(\"mf-gh-token\", tk);
-    }
-    e.target.disabled = true;
-    e.target.textContent = \"Scanning...\";
-    try {
-      const path = window.location.pathname.split(\"/\").filter(Boolean);
-      const repo = path.slice(-2).join(\"/\");
-      const res = await fetch(`https://api.github.com/repos/${repo}/dispatches`, {
-        method: \"POST\",
-        headers: { \"Authorization\": `token ${tk}`, \"Accept\": \"application/vnd.github.v3+json\" },
-        body: JSON.stringify({ event_type: \"manual-scan\" })
-      });
-      if(!res.ok) throw new Error(await res.text());
-      alert(\"Scan triggered successfully! Check GitHub Actions tab.\");
-    } catch(err) {
-      alert(\"Error: \" + err.message);
-      if(err.message.includes(\"401\")) {
-        localStorage.removeItem(\"mf-gh-token\");
-        alert(\"Token invalid. Please try again.\");
-      }
-    } finally {
-      e.target.disabled = false;
-      e.target.textContent = \"Scan Now\";
-    }
-  };
 $("list").onclick=e=>{const k=e.target.dataset.save;if(!k)return;ST[k]=!ST[k];try{localStorage.setItem("mf-saved",JSON.stringify(ST))}catch(x){}render()};
+$("scanBtn").onclick=async e=>{
+  const b=e.target,last=+(localStorage.getItem("mf-last-scan")||0);
+  if(Date.now()-last<6e5){note("A scan was started less than 10 minutes ago. Please wait for it to finish.");return}
+  const seg=location.pathname.split("/").filter(Boolean)[0];
+  const repo=C.repo||(location.hostname.endsWith(".github.io")&&seg?location.hostname.replace(/\.github\.io$/,"")+"/"+seg:"");
+  if(!repo){note('Scan now needs the repo name. Add repo: "owner/name" to docs/config.js.');return}
+  let tk=null;try{tk=localStorage.getItem("mf-gh-token")}catch(x){}
+  if(!tk){tk=prompt("Paste a GitHub fine-grained token for this one repo with Actions: Read and write permission. It is stored only in this browser.");if(!tk)return;tk=tk.trim();try{localStorage.setItem("mf-gh-token",tk)}catch(x){}}
+  b.disabled=true;b.textContent="Starting…";
+  try{
+    const r=await fetch(`https://api.github.com/repos/${repo}/actions/workflows/scan.yml/dispatches`,{method:"POST",headers:{Authorization:"Bearer "+tk,Accept:"application/vnd.github+json","X-GitHub-Api-Version":"2022-11-28"},body:JSON.stringify({ref:"main"})});
+    if(r.status!==204)throw Object.assign(new Error("HTTP "+r.status),{status:r.status});
+    try{localStorage.setItem("mf-last-scan",String(Date.now()))}catch(x){}
+    note("Scan started. New listings should appear in a few minutes. This page refreshes by itself.");
+  }catch(err){
+    if([401,403,404].includes(err.status)){try{localStorage.removeItem("mf-gh-token")}catch(x){}note("GitHub refused the token ("+esc(err.message)+"). Create a fine-grained token for this repo with Actions: Read and write, then try again.")}
+    else note("Could not start the scan: "+esc(err.message));
+  }finally{b.disabled=false;b.textContent="Scan now"}
+};
 load();setInterval(load,60000);
 </script></body></html>

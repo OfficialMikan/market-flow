@@ -46,3 +46,7 @@ Bot-protected sites like Carousell block cloud servers, so run it at home with y
 
 ## If a scan shows 0 listings
 The log prints a DEBUG line (status, page title, text) and the run saves a screenshot under the run's Artifacts. A captcha or block page means the site is rejecting GitHub's servers. Run `npm run watch` from your own computer instead.
+
+## Security rules
+- Never put real keys in `.env.example` or any committed file. Real values go only in `.env` (ignored by git) and GitHub Secrets. Git history is permanent and this repo is public.
+- Scan now button: create a fine-grained GitHub token limited to this one repo with only Actions: Read and write, and an expiry date. It is kept in your browser only. Never use a token with full `repo` access.
