@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Market Flow</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f2f5ef;--card:#fff;--ink:#17261f;--mute:#5d6e65;--line:#dde4da;--acc:#0f766e;--accbg:#d9f0ec;--warn:#a8540a;--warnbg:#fbe9d3;--hot:#d6452f;--up:#1e8e5a;--tile:#e7eee4;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root{--bg:#121a16;--card:#1a251f;--ink:#e8f0ea;--mute:#93a69b;--line:#2a3830;--acc:#4fd1c1;--accbg:#16413c;--warn:#f0a35e;--warnbg:#4a2f14;--hot:#ff7a62;--up:#5bd699;--tile:#22312a;color-scheme:dark}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 "DM Sans",system-ui,sans-serif}
+.wrap{max-width:780px;margin:0 auto;padding:16px 14px 40px}h1,h2,.num,.price{font-family:"Bricolage Grotesque","DM Sans",system-ui,sans-serif}
+h1{font-size:28px;margin:0;font-weight:800;letter-spacing:-.02em}h2{font-size:18px;margin:26px 0 10px}
+.sub{color:var(--mute);font-size:13px;margin-top:3px}
+.note{margin:12px 0;padding:10px 12px;border-radius:10px;background:var(--warnbg);color:var(--warn);font-size:13px}
+.sum{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:14px 0}@media(min-width:560px){.sum{grid-template-columns:repeat(4,1fr)}}
+.sum div{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px}.sum .num{font-size:22px;font-weight:800;display:block}.sum small{color:var(--mute);font-size:12px}
+.row{display:flex;gap:8px;overflow-x:auto;padding:2px 0 8px;scrollbar-width:none}.row::-webkit-scrollbar{display:none}
+.chip{flex:none;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:99px;padding:7px 13px;font:500 13px "DM Sans",sans-serif;cursor:pointer}.chip[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.tools{display:flex;gap:8px;margin:2px 0 12px}input,select{font:inherit;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:10px;padding:9px 11px;min-width:0}input{flex:1}
+:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.item{display:grid;grid-template-columns:88px 1fr;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px;margin-bottom:10px}
+.pic{height:88px;border-radius:10px;background:linear-gradient(135deg,var(--tile),var(--line));display:grid;place-items:center;font-size:36px;position:relative;overflow:hidden}.pic img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.rank{position:absolute;top:4px;left:4px;z-index:1;background:var(--ink);color:var(--bg);font:800 11px "Bricolage Grotesque",sans-serif;border-radius:7px;padding:1px 6px}
+.top{display:flex;justify-content:space-between;gap:8px}.name{font-weight:700;line-height:1.25;overflow-wrap:anywhere}
+.tag{font-size:11px;font-weight:700;border-radius:6px;padding:2px 7px;height:fit-content;white-space:nowrap;background:var(--accbg);color:var(--acc)}.tag.new{background:var(--warnbg);color:var(--warn)}
+.meta{color:var(--mute);font-size:12.5px;margin:3px 0 6px}.prices{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}.price{font-weight:800;font-size:20px}.arrow{color:var(--mute);font-size:13px}.gain{font-weight:700;font-size:13px;color:var(--up)}.gain.neg{color:var(--hot)}
+.dem{display:flex;align-items:center;gap:8px;margin-top:7px;font-size:12px;color:var(--mute)}.bar{flex:1;height:6px;background:var(--tile);border-radius:9px;overflow:hidden}.bar i{display:block;height:100%;background:var(--hot)}.bar.a i{background:var(--acc)}
+.acts{display:flex;gap:8px;margin-top:8px}.acts a,.acts button{font:700 13px "DM Sans",sans-serif;border:1px solid var(--line);background:none;color:var(--ink);border-radius:9px;padding:6px 11px;cursor:pointer;text-decoration:none}.acts a{background:var(--acc);border-color:var(--acc);color:#fff}
+@media (prefers-color-scheme:dark){.acts a{color:#0b1b17}}
+.flow{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:6px 12px}.fl{display:grid;grid-template-columns:90px 1fr auto;gap:10px;align-items:center;padding:8px 0;font-size:13px;border-bottom:1px solid var(--line)}.fl:last-child{border:0}.fl small{color:var(--mute)}
+.empty{text-align:center;color:var(--mute);padding:30px 10px}
+</style></head>
+<body><div class="wrap">
+<h1>Market Flow</h1><div class="sub" id="upd">Loading…</div>
+<div id="msg"></div>
+<div class="sum" id="sum"></div>
+<div class="row" id="cats"></div>
+<div class="tools"><input id="q" type="search" placeholder="Search items" aria-label="Search items">
+<select id="sort" aria-label="Sort by"><option value="score">Top score</option><option value="demand">Highest demand</option><option value="margin">Best margin</option><option value="dist">Nearest</option><option value="new">Newest</option></select></div>
+<div class="row"><button class="chip" id="dealsBtn" aria-pressed="false">Profitable only</button><button class="chip" id="savedBtn" aria-pressed="false">Saved</button></div>
+<div id="list"></div>
+<h2>Market flow by category</h2><div class="flow" id="flow"></div>
+</div>
+<script src="config.js"></script>
+<script>
+const C=window.MF_CONFIG||{};let ALL=[],cat="All",dealsOnly=false,savedOnly=false,ST={};
+try{ST=JSON.parse(localStorage.getItem("mf-saved")||"{}")}catch(e){}
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const peso=v=>v==null?"?":"₱"+Math.round(v).toLocaleString("en-PH");
+const mins=iso=>iso?Math.max(0,Math.round((Date.now()-new Date(iso))/6e4)):null;
+const ago=iso=>{const m=mins(iso);return m==null?"":m<60?m+" min ago":m<1440?Math.floor(m/60)+" h ago":Math.floor(m/1440)+" d ago"};
+const EMO={Gaming:"🎮",Computers:"💻",Phones:"📱",Home:"🏠",Supplies:"📦",Fashion:"👕",Other:"🛒"};
+const num=v=>v==null?null:+v;
+const safeUrl=u=>/^https:\/\//.test(u||"")?u:"";
+function note(t){$("msg").innerHTML='<div class="note">'+t+'</div>'}
+async function load(){
+  if(!C.url||!C.anonKey){note("Setup needed: open <b>docs/config.js</b> and paste your Supabase Project URL and anon key.");$("upd").textContent="Not connected";return}
+  try{
+    const since=new Date(Date.now()-48*36e5).toISOString();
+    const r=await fetch(C.url.replace(/\/$/,"")+"/rest/v1/listings?select=*&last_seen=gte."+encodeURIComponent(since)+"&order=score.desc&limit=500",{headers:{apikey:C.anonKey,Authorization:"Bearer "+C.anonKey}});
+    if(!r.ok)throw new Error("HTTP "+r.status);
+    ALL=(await r.json()).map(x=>({...x,price:num(x.price),resale:num(x.resale),margin_pct:num(x.margin_pct),distance_km:num(x.distance_km)}));
+    $("msg").innerHTML="";render();
+  }catch(e){note("Could not load data ("+esc(e.message)+"). Check the URL and anon key, and that schema.sql was run.")}
+}
+function render(){
+  const q=$("q").value.toLowerCase(),s=$("sort").value;
+  const cats=["All",...new Set(ALL.map(x=>x.category||"Other"))];
+  $("cats").innerHTML=cats.map(c=>`<button class="chip" data-c="${esc(c)}" aria-pressed="${c==cat}">${esc(c)}</button>`).join("");
+  let L=ALL.filter(x=>(cat=="All"||(x.category||"Other")==cat)&&(x.title||"").toLowerCase().includes(q)&&(!dealsOnly||x.margin_pct>0)&&(!savedOnly||ST[x.hash]));
+  const key={score:x=>-x.score,demand:x=>-x.demand,margin:x=>-x.margin_pct,dist:x=>x.distance_km==null?1e9:x.distance_km,new:x=>mins(x.first_seen)};
+  L.sort((a,b)=>key[s](a)-key[s](b));
+  const latest=ALL.reduce((m,x)=>Math.max(m,+new Date(x.last_seen)),0);
+  const lm=latest?Math.round((Date.now()-latest)/6e4):null;
+  $("upd").textContent=lm==null?"No listings yet":"Last scan "+(lm<60?lm+" min":Math.floor(lm/60)+" h")+" ago";
+  if(lm!=null&&lm>180)note("The scanner has not saved anything for over 3 hours. Check the Actions tab on GitHub.");
+  const fresh=ALL.filter(x=>mins(x.first_seen)<1440).length,best=ALL.reduce((m,x)=>Math.max(m,x.margin_pct||0),0);
+  const byCat={};ALL.forEach(x=>{(byCat[x.category||"Other"]??=[]).push(x)});
+  const avg=(a,f)=>a.reduce((t,x)=>t+(f(x)||0),0)/a.length;
+  const hot=Object.entries(byCat).sort((a,b)=>avg(b[1],x=>x.demand)-avg(a[1],x=>x.demand))[0];
+  $("sum").innerHTML=[[ALL.length,"active listings"],[fresh,"new in 24 h"],[best+"%","best margin"],[hot?hot[0]:"-","hottest category"]].map(a=>`<div><span class="num">${esc(a[0])}</span><small>${a[1]}</small></div>`).join("");
+  $("list").innerHTML=L.length?L.slice(0,100).map((x,i)=>{
+    const u=safeUrl(x.url),im=safeUrl(x.image_url),m=x.margin_pct||0,isNew=mins(x.first_seen)<180;
+    return `<article class="item"><div class="pic">${EMO[x.category]||"🛒"}${im?`<img src="${esc(im)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">`:""}<span class="rank">#${i+1}</span></div><div>
+<div class="top"><div class="name">${esc(x.title)}</div><span class="tag${isNew?" new":""}">${isNew?"NEW":esc(x.source)}</span></div>
+<div class="meta">${esc(x.source)} · ${x.distance_km==null?"distance unknown":x.distance_km+" km"} · ${esc(ago(x.posted_at||x.first_seen))}${x.comments?" · "+x.comments+" comments":""}</div>
+<div class="prices"><span class="price">${peso(x.price)}</span>${x.resale?`<span class="arrow">resells ~${peso(x.resale)}</span>`:""}<span class="gain${m<0?" neg":""}">${m>0?"+":""}${m}%</span></div>
+<div class="dem"><span>Demand ${x.demand}</span><div class="bar"><i style="width:${Math.min(100,x.demand||0)}%"></i></div><span>Score ${x.score}</span></div>
+<div class="acts">${u?`<a href="${esc(u)}" target="_blank" rel="noopener noreferrer">Open listing</a>`:""}<button data-save="${esc(x.hash)}">${ST[x.hash]?"Saved":"Save"}</button></div></div></article>`}).join(""):'<div class="empty">'+(ALL.length?"No items match these filters.":"No listings yet. Run the scanner, then refresh.")+'</div>';
+  $("flow").innerHTML=Object.entries(byCat).sort((a,b)=>b[1].length-a[1].length).map(([c,a])=>`<div class="fl"><b>${esc(c)}</b><div class="bar a"><i style="width:${Math.round(avg(a,x=>x.demand))}%"></i></div><small>${a.length} items · avg ${peso(avg(a,x=>x.price))} · ${Math.round(avg(a,x=>x.margin_pct))}%</small></div>`).join("")||'<div class="empty">No data yet.</div>';
+}
+$("cats").onclick=e=>{const b=e.target.closest("button");if(b){cat=b.dataset.c;render()}};
+$("q").oninput=render;$("sort").onchange=render;
+$("dealsBtn").onclick=e=>{dealsOnly=!dealsOnly;e.target.setAttribute("aria-pressed",dealsOnly);render()};
+$("savedBtn").onclick=e=>{savedOnly=!savedOnly;e.target.setAttribute("aria-pressed",savedOnly);render()};
+$("list").onclick=e=>{const k=e.target.dataset.save;if(!k)return;ST[k]=!ST[k];try{localStorage.setItem("mf-saved",JSON.stringify(ST))}catch(x){}render()};
+load();setInterval(load,60000);
+</script></body></html>

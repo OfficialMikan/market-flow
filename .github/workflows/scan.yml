@@ -9,7 +9,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: { node-version: 20, cache: npm }
+        with: { node-version: 22, cache: npm }
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - run: node src/run.js
@@ -23,5 +23,11 @@ jobs:
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          HOME_LAT: ${{ vars.HOME_LAT }}
+          HOME_LNG: ${{ vars.HOME_LNG }}
+          RADIUS_KM: ${{ vars.RADIUS_KM }}
           WATCH: ${{ vars.WATCH }}
           SOURCES: ${{ vars.SOURCES }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: debug, path: debug/, if-no-files-found: ignore }

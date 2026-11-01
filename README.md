@@ -20,3 +20,11 @@ Scans Carousell (Shopee is experimental) for your watch list, ranks deals by dem
 - The scrapers read listing links generically, but I could not test them against the live sites. Run once and check the output.
 - Keep the scan interval and watch list modest. Personal use only.
 - Facebook Marketplace is not included (no public API, login required).
+
+## Dashboard (see your listings)
+1. Put your Supabase Project URL and ANON key in `docs/config.js` (never the service_role key), commit and push.
+2. On GitHub: Settings > Pages > Deploy from a branch > `main` and folder `/docs` > Save. Your dashboard appears at `https://<username>.github.io/<repo>/` after a minute.
+3. It refreshes every minute, warns you if the scanner stops, and lets you filter, sort, search and save listings.
+
+## If a scan shows 0 listings
+The log prints a DEBUG line (status, page title, text) and the run saves a screenshot under the run's Artifacts. A captcha or block page means the site is rejecting GitHub's servers. Run `npm run watch` from your own computer instead.
