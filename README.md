@@ -1,5 +1,13 @@
 # Market Flow Agent
 
+## Automatic cloud setup (recommended, no computer needed)
+GitHub Actions runs the scan on a schedule and Apify fetches Carousell through residential proxies, which gets past the block that stops GitHub's own servers.
+1. Create a free account at apify.com (no card). Copy your API token (Settings > API & Integrations). Set a monthly usage limit of $5 in your account's billing/limits settings so you can never be charged.
+2. Test once in Apify's console: open the Carousell Scraper by crawloop, set country PH, query "nintendo switch", max items 5, and run it. If it errors about proxies, residential proxy needs a paid plan on your account and you should use the local setup below instead.
+3. In your GitHub repo add secrets: `APIFY_TOKEN`, `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, one AI key, and `NTFY_TOPIC` or `DISCORD_WEBHOOK_URL`. Optional variables: `APIFY_MAX_ITEMS` (listings per search, default 10), `WATCH`, `HOME_LAT`, `HOME_LNG`, `RADIUS_KM`.
+4. Actions > scan > Run workflow. The log should show `carousell_apify "nintendo switch": N listings` and `Saved N listings.`
+5. It then runs by itself every 12 hours. Cost: Apify bills per listing returned plus proxy data, so a bigger `APIFY_MAX_ITEMS` or a faster cron uses up the free $5 sooner. Check the cost of your first run in Apify's console before changing the schedule.
+
 Scans Carousell (Shopee is experimental) for your watch list, ranks deals by demand, margin and distance, saves to Supabase, and sends Telegram alerts.
 
 ## Setup

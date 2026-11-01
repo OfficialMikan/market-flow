@@ -2,7 +2,7 @@ const env = (k, d) => process.env[k] || d;
 export const CONFIG = {
   home: { name: env("HOME_NAME", "Magalang, Pampanga"), lat: +env("HOME_LAT", 15.2147), lng: +env("HOME_LNG", 120.6586) },
   radiusKm: +env("RADIUS_KM", 25),
-  sources: env("SOURCES", "carousell").split(",").map(s => s.trim()).filter(Boolean),
+  sources: env("SOURCES", process.env.APIFY_TOKEN ? "carousell_apify" : "carousell").split(",").map(s => s.trim()).filter(Boolean),
   watch: env("WATCH", "nintendo switch,iphone 11,mechanical keyboard,gaming mouse,laptop").split(",").map(s => s.trim()).filter(Boolean),
   alertMinScore: +env("ALERT_MIN_SCORE", 75),
 };

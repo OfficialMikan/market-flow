@@ -42,3 +42,17 @@ console.log("alerts test passed");
 const { loadCustom } = await import("./sources/custom.js");
 assert.ok(typeof loadCustom("sources.json").lazada.search === "function");
 console.log("custom sources test passed");
+
+// Apify source: maps items, skips sold, sends auth + PH input.
+process.env.APIFY_TOKEN = "tok";
+const apify = await import("./sources/apify.js");
+let seen = null;
+globalThis.fetch = async (url, o) => { seen = { url, o }; return { ok: true, json: async () => [
+  { url: "https://www.carousell.ph/p/a-1/", title: "Switch OLED", price: 10500, imageUrl: "https://i/1.jpg", location: "Angeles", likesCount: 4, isSold: false, listedAt: "2026-11-01T01:00:00Z" },
+  { url: "https://www.carousell.ph/p/b-2/", title: "Sold thing", price: 100, isSold: true }] }; };
+const got = await apify.search("nintendo switch");
+assert.equal(got.length, 1); assert.equal(got[0].locationText, "Angeles"); assert.equal(got[0].comments, 4);
+assert.equal(seen.o.headers.authorization, "Bearer tok");
+const sent = JSON.parse(seen.o.body); assert.equal(sent.country, "PH"); assert.deepEqual(sent.searchQueries, ["nintendo switch"]);
+globalThis.fetch = realFetch;
+console.log("apify test passed");

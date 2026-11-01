@@ -1,7 +1,6 @@
 name: scan
 on:
-  # Automatic runs are off because Carousell blocks GitHub's servers. Re-enable if a manual run shows listings:
-  # schedule: [{ cron: "0 */2 * * *" }]
+  schedule: [{ cron: "0 */12 * * *" }]
   workflow_dispatch:
 jobs:
   scan:
@@ -12,7 +11,6 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: npm }
       - run: npm ci
-      - run: npx playwright install --with-deps chromium
       - run: node src/run.js
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -27,6 +25,8 @@ jobs:
           HOME_LAT: ${{ vars.HOME_LAT }}
           HOME_LNG: ${{ vars.HOME_LNG }}
           RADIUS_KM: ${{ vars.RADIUS_KM }}
+          APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
+          APIFY_MAX_ITEMS: ${{ vars.APIFY_MAX_ITEMS }}
           WATCH: ${{ vars.WATCH }}
           SOURCES: ${{ vars.SOURCES }}
       - uses: actions/upload-artifact@v4

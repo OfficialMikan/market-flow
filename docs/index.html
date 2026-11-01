@@ -90,7 +90,7 @@ function render(){
     const u=safeUrl(x.url),im=safeUrl(x.image_url),m=x.margin_pct||0,isNew=mins(x.first_seen)<180;
     return `<article class="item"><div class="pic">${EMO[x.category]||"🛒"}${im?`<img src="${esc(im)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">`:""}<span class="rank">#${i+1}</span></div><div>
 <div class="top"><div class="name">${esc(x.title)}</div><span class="tag${isNew?" new":""}">${isNew?"NEW":esc(x.source)}</span></div>
-<div class="meta">${esc(x.source)} · ${x.distance_km==null?"distance unknown":x.distance_km+" km"} · ${esc(ago(x.posted_at||x.first_seen))}${x.comments?" · "+x.comments+" comments":""}</div>
+<div class="meta">${esc(x.source)} · ${x.distance_km==null?"distance unknown":x.distance_km+" km"} · ${esc(ago(x.posted_at||x.first_seen))}${x.comments?" · "+x.comments+" likes":""}</div>
 <div class="prices"><span class="price">${peso(x.price)}</span>${x.resale?`<span class="arrow">resells ~${peso(x.resale)}</span>`:""}<span class="gain${m<0?" neg":""}">${m>0?"+":""}${m}%</span></div>
 <div class="dem"><span>Demand ${x.demand}</span><div class="bar"><i style="width:${Math.min(100,x.demand||0)}%"></i></div><span>Score ${x.score}</span></div>
 <div class="acts">${u?`<a href="${esc(u)}" target="_blank" rel="noopener noreferrer">Open listing</a>`:""}<button data-save="${esc(x.hash)}">${ST[x.hash]?"Saved":"Save"}</button></div></div></article>`}).join(""):'<div class="empty">'+(ALL.length?"No items match these filters.":"Connected, but no listings are saved yet. Run the scanner on your computer (see README), then refresh.")+'</div>';
