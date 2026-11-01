@@ -1,6 +1,7 @@
 name: scan
 on:
-  schedule: [{ cron: "*/30 * * * *" }]
+  # Automatic runs are off because Carousell blocks GitHub's servers. Re-enable if a manual run shows listings:
+  # schedule: [{ cron: "0 */2 * * *" }]
   workflow_dispatch:
 jobs:
   scan:

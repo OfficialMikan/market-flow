@@ -54,7 +54,13 @@ const EMO={Gaming:"馃幃",Computers:"馃捇",Phones:"馃摫",Home:"馃彔",Supplies:"馃
 const num=v=>v==null?null:+v;
 const safeUrl=u=>/^https:\/\//.test(u||"")?u:"";
 function note(t){$("msg").innerHTML='<div class="note">'+t+'</div>'}
+const DEMO=()=>{const t=m=>new Date(Date.now()-m*6e4).toISOString();return [
+{hash:"d1",source:"demo",url:"",title:"Nintendo Switch OLED, lightly used",category:"Gaming",price:10500,resale:13500,margin_pct:18,demand:92,score:84,distance_km:6.4,comments:5,posted_at:t(40),first_seen:t(40),last_seen:t(2)},
+{hash:"d2",source:"demo",url:"",title:"Mechanical keyboard 75% RGB",category:"Computers",price:1100,resale:1600,margin_pct:34,demand:78,score:71,distance_km:3.1,comments:2,posted_at:t(300),first_seen:t(300),last_seen:t(2)},
+{hash:"d3",source:"demo",url:"",title:"iPhone 11 128GB",category:"Phones",price:9500,resale:11200,margin_pct:9,demand:95,score:66,distance_km:12,comments:11,posted_at:t(900),first_seen:t(900),last_seen:t(2)},
+{hash:"d4",source:"demo",url:"",title:"Rice cooker 1.8L",category:"Home",price:800,resale:780,margin_pct:-10,demand:55,score:30,distance_km:2.2,comments:0,posted_at:t(2000),first_seen:t(2000),last_seen:t(2)}]};
 async function load(){
+  if(/[?&]demo/.test(location.search)){ALL=DEMO();render();$("upd").textContent="Demo data, not your real listings";return}
   if(!C.url||!C.anonKey){note("Setup needed: open <b>docs/config.js</b> and paste your Supabase Project URL and anon key.");$("upd").textContent="Not connected";return}
   try{
     const since=new Date(Date.now()-48*36e5).toISOString();
@@ -87,7 +93,7 @@ function render(){
 <div class="meta">${esc(x.source)} 路 ${x.distance_km==null?"distance unknown":x.distance_km+" km"} 路 ${esc(ago(x.posted_at||x.first_seen))}${x.comments?" 路 "+x.comments+" comments":""}</div>
 <div class="prices"><span class="price">${peso(x.price)}</span>${x.resale?`<span class="arrow">resells ~${peso(x.resale)}</span>`:""}<span class="gain${m<0?" neg":""}">${m>0?"+":""}${m}%</span></div>
 <div class="dem"><span>Demand ${x.demand}</span><div class="bar"><i style="width:${Math.min(100,x.demand||0)}%"></i></div><span>Score ${x.score}</span></div>
-<div class="acts">${u?`<a href="${esc(u)}" target="_blank" rel="noopener noreferrer">Open listing</a>`:""}<button data-save="${esc(x.hash)}">${ST[x.hash]?"Saved":"Save"}</button></div></div></article>`}).join(""):'<div class="empty">'+(ALL.length?"No items match these filters.":"No listings yet. Run the scanner, then refresh.")+'</div>';
+<div class="acts">${u?`<a href="${esc(u)}" target="_blank" rel="noopener noreferrer">Open listing</a>`:""}<button data-save="${esc(x.hash)}">${ST[x.hash]?"Saved":"Save"}</button></div></div></article>`}).join(""):'<div class="empty">'+(ALL.length?"No items match these filters.":"Connected, but no listings are saved yet. Run the scanner on your computer (see README), then refresh.")+'</div>';
   $("flow").innerHTML=Object.entries(byCat).sort((a,b)=>b[1].length-a[1].length).map(([c,a])=>`<div class="fl"><b>${esc(c)}</b><div class="bar a"><i style="width:${Math.round(avg(a,x=>x.demand))}%"></i></div><small>${a.length} items 路 avg ${peso(avg(a,x=>x.price))} 路 ${Math.round(avg(a,x=>x.margin_pct))}%</small></div>`).join("")||'<div class="empty">No data yet.</div>';
 }
 $("cats").onclick=e=>{const b=e.target.closest("button");if(b){cat=b.dataset.c;render()}};

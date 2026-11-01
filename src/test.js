@@ -38,3 +38,7 @@ await alertDeals([{ hash: "h1", title: "Joy-Con", price: 2400, resale: 3300, mar
 assert.equal(hits.length, 2); assert.ok(hits[0][1].content.includes("₱2400")); assert.equal(hits[1][1].topic, "t"); assert.deepEqual(marked, ["h1"]);
 globalThis.fetch = realFetch;
 console.log("alerts test passed");
+
+const { loadCustom } = await import("./sources/custom.js");
+assert.ok(typeof loadCustom("sources.json").lazada.search === "function");
+console.log("custom sources test passed");

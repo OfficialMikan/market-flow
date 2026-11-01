@@ -12,7 +12,15 @@ Scans Carousell (Shopee is experimental) for your watch list, ranks deals by dem
 5. Copy `.env.example` to `.env` and fill in the keys. Change HOME_LAT / HOME_LNG to your exact spot.
 6. Test: `npm test`, then `SOURCES=mock npm run scan` (no keys needed), then `npm run scan` for real.
 
-## Run 24/7
+## Run the scanner (recommended: your own computer)
+Bot-protected sites like Carousell block cloud servers, so run it at home with your real Chrome:
+1. Install Node 22+ and Google Chrome, then `npm install`.
+2. `npm run login`: Chrome opens on Carousell. Pass any check, then close the window (your profile is remembered).
+3. `npm run watch`: scans every 30 min while your computer is on. `npm run scan` runs once.
+4. More sites: add entries to `sources.json`, then list their names in `SOURCES` in `.env` (e.g. `SOURCES=carousell,lazada`).
+5. Dashboard preview without data: open the dashboard URL with `?demo` at the end.
+
+## Run on GitHub instead (may be blocked)
 - Option A, GitHub Actions: push to a private repo, add the secrets from `.env` under Settings > Secrets and variables > Actions, enable the `scan` workflow. Runs every 30 min. Sites may block GitHub's servers.
 - Option B, your own PC or spare device: `npm run watch` (loops every INTERVAL_MIN minutes). Home internet is blocked less often.
 

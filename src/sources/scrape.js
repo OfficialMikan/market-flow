@@ -17,8 +17,7 @@ export function parse({ url, text, img }) {
 }
 // Generic card reader: finds listing links by URL pattern, so it survives CSS class changes.
 // When it finds nothing it logs what the page looked like and saves a screenshot to debug/.
-export async function scrapeAnchors(browser, url, { hrefRe, selector }) {
-  const ctx = await browser.newContext({ locale: "en-PH", timezoneId: "Asia/Manila", userAgent: UA, viewport: { width: 1280, height: 900 } });
+export async function scrapeAnchors(ctx, url, { hrefRe, selector }) {
   const page = await ctx.newPage();
   try {
     const resp = await page.goto(url, { waitUntil: "domcontentloaded", timeout: 45000 });
@@ -39,5 +38,5 @@ export async function scrapeAnchors(browser, url, { hrefRe, selector }) {
       await page.screenshot({ path: `debug/${Date.now()}.png` }).catch(() => {});
     }
     return parsed;
-  } finally { await ctx.close(); }
+  } finally { await page.close(); }
 }

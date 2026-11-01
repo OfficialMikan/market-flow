@@ -1,1 +1,19 @@
-{"name":"market-flow-agent","version":"1.0.0","type":"module","private":true,"scripts":{"scan":"node src/run.js","watch":"node src/watch.js","test":"node src/test.js"},"engines":{"node":">=22"},"dependencies":{"@supabase/supabase-js":"^2.118.0","playwright":"^1.64.1"}}
+{
+ "name": "market-flow-agent",
+ "version": "1.0.0",
+ "type": "module",
+ "private": true,
+ "scripts": {
+  "scan": "node --env-file=.env src/run.js",
+  "watch": "node --env-file=.env src/watch.js",
+  "login": "node --env-file=.env src/login.js",
+  "test": "node src/test.js"
+ },
+ "engines": {
+  "node": ">=22"
+ },
+ "dependencies": {
+  "@supabase/supabase-js": "^2.118.0",
+  "playwright": "^1.64.1"
+ }
+}
