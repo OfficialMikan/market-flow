@@ -27,6 +27,9 @@ jobs:
           RADIUS_KM: ${{ vars.RADIUS_KM }}
           APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
           APIFY_MAX_ITEMS: ${{ vars.APIFY_MAX_ITEMS }}
+          FB_LOCATION: ${{ vars.FB_LOCATION }}
+          FB_RADIUS_KM: ${{ vars.FB_RADIUS_KM }}
+          FB_MAX_ITEMS: ${{ vars.FB_MAX_ITEMS }}
           WATCH: ${{ vars.WATCH }}
           SOURCES: ${{ vars.SOURCES }}
       - uses: actions/upload-artifact@v4

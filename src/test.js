@@ -56,3 +56,25 @@ assert.equal(seen.o.headers.authorization, "Bearer tok");
 const sent = JSON.parse(seen.o.body); assert.equal(sent.country, "PH"); assert.deepEqual(sent.searchQueries, ["nintendo switch"]);
 globalThis.fetch = realFetch;
 console.log("apify test passed");
+
+// Facebook source + empty-run diagnostics
+process.env.FB_LOCATION = "angeles-city";
+const fb = await import("./sources/facebook.js");
+let fbBody = null;
+globalThis.fetch = async (url, o) => { fbBody = JSON.parse(o.body); return { ok: true, json: async () => [
+  { listingUrl: "https://www.facebook.com/marketplace/item/1/", listingTitle: "PS5 controller", priceAmount: 1800, primaryPhotoUrl: "https://i/p.jpg", locationText: "Angeles, Pampanga", createdAt: "2026-11-01T02:00:00Z", isSold: false },
+  { listingUrl: "https://www.facebook.com/marketplace/item/2/", listingTitle: "Free chair", priceAmount: 0 }] }; };
+const fbr = await fb.search("ps5");
+assert.equal(fbr.length, 1); assert.equal(fbr[0].lat, undefined); assert.ok(fbr[0].locationText.includes("Pampanga"));
+assert.equal(fbBody.location, "angeles-city"); assert.equal(fbBody.searchKeyword, "ps5"); assert.equal(fbBody.radiusKm, 25);
+delete process.env.FB_LOCATION; await assert.rejects(fb.search("x"), /FB_LOCATION/);
+const errs = []; const origErr = console.error; console.error = (...a) => errs.push(a.join(" "));
+globalThis.fetch = async (url) => url.includes("run-sync") ? { ok: true, json: async () => [] }
+  : url.includes("/runs/last") ? { json: async () => ({ data: { id: "r1", status: "SUCCEEDED", statusMessage: "0 items", usageTotalUsd: 0.01 } }) }
+  : { text: async () => "line one\nProxy error: residential not allowed\n" };
+const { runActor } = await import("./sources/apifyCore.js");
+assert.deepEqual(await runActor("a~b", {}), []);
+console.error = origErr;
+assert.ok(errs.some(e => e.includes("status=SUCCEEDED")) && errs.some(e => e.includes("Proxy error")), "diagnostics printed");
+globalThis.fetch = realFetch;
+console.log("facebook + diagnostics test passed");

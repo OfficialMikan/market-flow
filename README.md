@@ -6,6 +6,8 @@ GitHub Actions runs the scan on a schedule and Apify fetches Carousell through r
 2. Test once in Apify's console: open the Carousell Scraper by crawloop, set country PH, query "nintendo switch", max items 5, and run it. If it errors about proxies, residential proxy needs a paid plan on your account and you should use the local setup below instead.
 3. In your GitHub repo add secrets: `APIFY_TOKEN`, `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, one AI key, and `NTFY_TOPIC` or `DISCORD_WEBHOOK_URL`. Optional variables: `APIFY_MAX_ITEMS` (listings per search, default 10), `WATCH`, `HOME_LAT`, `HOME_LNG`, `RADIUS_KM`.
 4. Actions > scan > Run workflow. The log should show `carousell_apify "nintendo switch": N listings` and `Saved N listings.`
+4b. Facebook Marketplace (public listings, no Facebook login): in a browser open facebook.com/marketplace, set your city, search anything, and copy the place part of the address (`facebook.com/marketplace/<THIS>/search/...`). Add it as the GitHub variable `FB_LOCATION`. Optional variables: `FB_RADIUS_KM` (default 25), `FB_MAX_ITEMS` (per search, default 15). Meta's terms forbid automated collection, so expect occasional blocks; this never uses your own Facebook account.
+4c. If a source returns 0 listings, the log prints a DEBUG line with the Apify run status and log tail. Paste it to get it fixed.
 5. It then runs by itself every 12 hours. Cost: Apify bills per listing returned plus proxy data, so a bigger `APIFY_MAX_ITEMS` or a faster cron uses up the free $5 sooner. Check the cost of your first run in Apify's console before changing the schedule.
 
 Scans Carousell (Shopee is experimental) for your watch list, ranks deals by demand, margin and distance, saves to Supabase, and sends Telegram alerts.
