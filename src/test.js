@@ -78,3 +78,15 @@ console.error = origErr;
 assert.ok(errs.some(e => e.includes("status=SUCCEEDED")) && errs.some(e => e.includes("Proxy error")), "diagnostics printed");
 globalThis.fetch = realFetch;
 console.log("facebook + diagnostics test passed");
+
+// Tolerant mapping + unusable-items diagnostic
+const ap = await import("./sources/apify.js");
+assert.equal(ap.mapItem({ url: "https://c/p/1", title: "x", price: "PHP 1,200" }).price, 1200);
+assert.equal(ap.mapItem({ listingUrl: "https://c/p/2", name: "y", priceFormatted: "₱2,500" }).price, 2500);
+const e2 = []; const oe = console.error; console.error = (...a) => e2.push(a.join(" "));
+process.env.APIFY_TOKEN = "t";
+globalThis.fetch = async () => ({ ok: true, json: async () => [{ weird: "shape", cost: 5 }] });
+assert.deepEqual(await ap.search("q"), []);
+console.error = oe; globalThis.fetch = realFetch;
+assert.ok(e2.some(e => e.includes("none were usable") && e.includes("weird")));
+console.log("mapping test passed");

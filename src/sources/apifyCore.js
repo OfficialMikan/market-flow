@@ -19,3 +19,14 @@ export async function runActor(actor, input) {
   if (!items.length) await diagnose(actor);
   return items;
 }
+
+export const toPrice = v => {
+  if (typeof v === "number") return v;
+  const m = String(v ?? "").replace(/,/g, "").match(/\d+(?:\.\d+)?/);
+  return m ? +m[0] : NaN;
+};
+// Items came back but none were usable: show the first one so the field names can be fixed.
+export function noteUnmapped(label, items, mapped) {
+  if (items.length && !mapped.length)
+    console.error(`  DEBUG ${label}: ${items.length} items came back but none were usable. First item: ${JSON.stringify(items[0]).slice(0, 500)}`);
+}
