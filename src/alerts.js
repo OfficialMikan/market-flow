@@ -5,7 +5,7 @@ const post = (url, body) => fetch(url, { method: "POST", signal: AbortSignal.tim
 
 export const channels = () => [
   E.DISCORD_WEBHOOK_URL && { name: "discord", send: d => post(E.DISCORD_WEBHOOK_URL, { content: d.text.slice(0, 1900) }) },
-  E.NTFY_TOPIC && { name: "ntfy", send: d => post(E.NTFY_SERVER || "https://ntfy.sh", { topic: E.NTFY_TOPIC, title: d.title, message: d.text, click: d.url }) },
+  E.NTFY_TOPIC && { name: "ntfy", send: d => post(E.NTFY_SERVER || "https://ntfy.sh", { topic: E.NTFY_TOPIC, title: d.title, message: d.text, click: d.url || undefined }) },
   E.TELEGRAM_BOT_TOKEN && E.TELEGRAM_CHAT_ID && { name: "telegram", send: d => post(`https://api.telegram.org/bot${E.TELEGRAM_BOT_TOKEN}/sendMessage`, { chat_id: E.TELEGRAM_CHAT_ID, text: d.text }) },
 ].filter(Boolean);
 
@@ -24,4 +24,10 @@ export async function alertDeals(deals, sb) {
     if (ok) sent.push(d.hash);
   }
   await markAlerted(sb, sent);
+}
+
+export const passesRules = (r, x) => r.score >= x.minScore && (r.marginPct ?? 0) >= (x.minMargin || 0)
+  && (x.maxPrice == null || r.price <= x.maxPrice) && (x.maxKm == null || r.distanceKm == null || r.distanceKm <= x.maxKm);
+export async function notify(title, text) {
+  for (const c of channels()) { try { await c.send({ title, text }); } catch (e) { console.error(`${c.name} notify failed:`, e.message); } }
 }

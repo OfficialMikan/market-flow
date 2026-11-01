@@ -50,3 +50,11 @@ The log prints a DEBUG line (status, page title, text) and the run saves a scree
 ## Security rules
 - Never put real keys in `.env.example` or any committed file. Real values go only in `.env` (ignored by git) and GitHub Secrets. Git history is permanent and this repo is public.
 - Scan now button: create a fine-grained GitHub token limited to this one repo with only Actions: Read and write, and an expiry date. It is kept in your browser only. Never use a token with full `repo` access.
+
+## New in this version
+1. **Database update (required once):** Supabase > SQL Editor > paste the text of `supabase/migration-2.sql`. First change the line `CHANGE-ME-TO-A-LONG-RANDOM-PASSCODE` to your own long random passcode. It is safe to run twice.
+2. **Sold tracking:** a Carousell listing counts as sold/removed when a newest-first search should have shown it but did not (and not when most listings vanish at once, which looks like a failed scrape). After 3+ such listings of the same product, its median days-to-sell feeds into demand and shows on the card as "sells in ~N d". Facebook results are not sorted by newest, so Facebook items are not marked sold.
+3. **Settings tab:** edit your searches and alert rules (minimum margin, maximum price, maximum km) from the dashboard. They are saved with your passcode and used on the next scan. Searches set here replace the `WATCH` variable.
+4. **Profit tab:** log what you buy and sell, see profit, return, money tied up and profit by category. Tap Bought on any listing to add it. Data stays in this browser; use Export CSV for backups.
+5. **Phone app:** open the dashboard in Chrome or Safari and choose Add to Home screen. "New since last visit" shows what appeared since you last had the page open, and on supported phones the app icon shows that count.
+6. **Budget guard:** before using Apify, the scanner checks this month's usage and pauses Apify sources at 90% of `APIFY_BUDGET_USD` (default 5), sending you an alert. Change it with the `APIFY_BUDGET_USD` and `APIFY_STOP_AT_PCT` variables.

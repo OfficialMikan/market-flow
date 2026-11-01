@@ -30,3 +30,15 @@ export function noteUnmapped(label, items, mapped) {
   if (items.length && !mapped.length)
     console.error(`  DEBUG ${label}: ${items.length} items came back but none were usable. First item: ${JSON.stringify(items[0]).slice(0, 500)}`);
 }
+
+// Stops Apify scans before the monthly credit runs out. Fails open (scans continue) if Apify's response is not understood.
+export async function checkBudget() {
+  try {
+    const r = await fetch(`${BASE}/users/me/limits`, { headers: headers() });
+    if (!r.ok) return { ok: true, note: `budget check unavailable (HTTP ${r.status})` };
+    const d = (await r.json()).data;
+    const used = d?.current?.monthlyUsageUsd, cap = +process.env.APIFY_BUDGET_USD || d?.limits?.maxMonthlyUsageUsd;
+    if (typeof used !== "number" || !(cap > 0)) return { ok: true, note: "budget check unavailable (unexpected response)" };
+    return { ok: used < cap * (+(process.env.APIFY_STOP_AT_PCT || 90) / 100), used, cap };
+  } catch (e) { return { ok: true, note: "budget check failed: " + e.message }; }
+}

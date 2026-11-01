@@ -2,7 +2,7 @@
 <html lang="en"><head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Market Flow</title>
+<title>Market Flow</title><link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#0f766e"><link rel="apple-touch-icon" href="icon-192.png">
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#f2f5ef;--card:#fff;--ink:#17261f;--mute:#5d6e65;--line:#dde4da;--acc:#0f766e;--accbg:#d9f0ec;--warn:#a8540a;--warnbg:#fbe9d3;--hot:#d6452f;--up:#1e8e5a;--tile:#e7eee4;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -29,22 +29,39 @@ h1{font-size:28px;margin:0;font-weight:800;letter-spacing:-.02em}h2{font-size:18
 @media (prefers-color-scheme:dark){.acts a{color:#0b1b17}}
 .flow{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:6px 12px}.fl{display:grid;grid-template-columns:90px 1fr auto;gap:10px;align-items:center;padding:8px 0;font-size:13px;border-bottom:1px solid var(--line)}.fl:last-child{border:0}.fl small{color:var(--mute)}
 #scanBtn{background:var(--acc);border-color:var(--acc);color:#fff}@media (prefers-color-scheme:dark){#scanBtn{color:#0b1b17}}
+.sum{grid-template-columns:repeat(auto-fit,minmax(130px,1fr))}[hidden]{display:none!important}
+.ag{display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:8px}.ag b{display:block;overflow-wrap:anywhere}.ag span{color:var(--mute);font-size:12.5px}
+.form{display:grid;gap:8px;grid-template-columns:1fr 1fr;margin:10px 0}.form input:first-child,.form button{grid-column:1/-1}
+label{display:block;font-size:12.5px;color:var(--mute);margin:10px 0 3px}textarea,#v-settings input{width:100%;font:inherit;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:10px;padding:9px 11px}
+.pri{background:var(--acc);border-color:var(--acc);color:#fff}@media (prefers-color-scheme:dark){.pri{color:#0b1b17}}
 .empty{text-align:center;color:var(--mute);padding:30px 10px}
 </style></head>
 <body><div class="wrap">
 <h1>Market Flow</h1><div class="sub" id="upd">Loading…</div>
+<div class="row" id="nav" style="margin-top:8px"><button class="chip" data-v="deals" aria-pressed="true">Deals</button><button class="chip" data-v="profit" aria-pressed="false">Profit</button><button class="chip" data-v="settings" aria-pressed="false">Settings</button></div>
 <div id="msg"></div>
-<div class="sum" id="sum"></div>
+<div id="v-deals"><div class="sum" id="sum"></div>
 <div class="row" id="cats"></div>
 <div class="tools"><input id="q" type="search" placeholder="Search items" aria-label="Search items">
 <select id="sort" aria-label="Sort by"><option value="score">Top score</option><option value="demand">Highest demand</option><option value="margin">Best margin</option><option value="dist">Nearest</option><option value="new">Newest</option></select></div>
-<div class="row"><button class="chip" id="dealsBtn" aria-pressed="false">Profitable only</button><button class="chip" id="savedBtn" aria-pressed="false">Saved</button><button class="chip" id="scanBtn">Scan now</button></div>
+<div class="row"><button class="chip" id="dealsBtn" aria-pressed="false">Profitable only</button><button class="chip" id="newBtn" aria-pressed="false">New since last visit</button><button class="chip" id="savedBtn" aria-pressed="false">Saved</button><button class="chip" id="scanBtn">Scan now</button></div>
 <div id="list"></div>
-<h2>Market flow by category</h2><div class="flow" id="flow"></div>
+<h2>Market flow by category</h2><div class="flow" id="flow"></div></div>
+<div id="v-profit" hidden><h2>Profit tracker</h2><div class="sum" id="pSum"></div>
+<div class="form"><input id="tItem" placeholder="Item you bought" aria-label="Item you bought"><input id="tBuy" type="number" inputmode="decimal" placeholder="Paid (₱)" aria-label="Paid"><select id="tCat" aria-label="Category"></select><button class="chip pri" id="tAdd">Add item</button></div>
+<div id="pList"></div><h2>Profit by category</h2><div class="flow" id="pCat"></div>
+<div class="row" style="margin-top:12px"><button class="chip" id="tCsv">Export CSV</button></div><div class="sub">Saved on this device only, so clearing browser data erases it. Export now and then.</div></div>
+<div id="v-settings" hidden><h2>Scanner settings</h2><div class="sub">Applied on the next scan. Leave a box empty for no limit.</div>
+<label for="sWatch">Searches (separate with commas)</label><textarea id="sWatch" rows="3"></textarea>
+<label for="sMargin">Alert only if margin is at least (%)</label><input id="sMargin" type="number" inputmode="decimal">
+<label for="sPrice">Alert only if price is at most (₱)</label><input id="sPrice" type="number" inputmode="decimal">
+<label for="sKm">Alert only if within (km)</label><input id="sKm" type="number" inputmode="decimal">
+<label for="sPass">Settings passcode</label><input id="sPass" type="password" autocomplete="off">
+<div class="row" style="margin-top:12px"><button class="chip pri" id="sSave">Save settings</button></div></div>
 </div>
 <script src="config.js"></script>
 <script>
-const C=window.MF_CONFIG||{};let ALL=[],cat="All",dealsOnly=false,savedOnly=false,ST={};
+const C=window.MF_CONFIG||{};let GONE=0,ALL=[],cat="All",dealsOnly=false,savedOnly=false,ST={};
 try{ST=JSON.parse(localStorage.getItem("mf-saved")||"{}")}catch(e){}
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -67,7 +84,7 @@ async function load(){
     const since=new Date(Date.now()-48*36e5).toISOString();
     const r=await fetch(C.url.replace(/\/$/,"")+"/rest/v1/listings?select=*&last_seen=gte."+encodeURIComponent(since)+"&order=score.desc&limit=500",{headers:{apikey:C.anonKey,Authorization:"Bearer "+C.anonKey}});
     if(!r.ok)throw new Error("HTTP "+r.status);
-    ALL=(await r.json()).map(x=>({...x,price:num(x.price),resale:num(x.resale),margin_pct:num(x.margin_pct),distance_km:num(x.distance_km)}));
+    const rows=(await r.json()).map(x=>({...x,price:num(x.price),resale:num(x.resale),margin_pct:num(x.margin_pct),distance_km:num(x.distance_km),sell_days:num(x.sell_days)}));GONE=rows.filter(x=>x.removed_at).length;ALL=rows.filter(x=>!x.removed_at);
     $("msg").innerHTML="";render();
   }catch(e){note("Could not load data ("+esc(e.message)+"). Check the URL and anon key, and that schema.sql was run.")}
 }
@@ -75,33 +92,35 @@ function render(){
   const q=$("q").value.toLowerCase(),s=$("sort").value;
   const cats=["All",...new Set(ALL.map(x=>x.category||"Other"))];
   $("cats").innerHTML=cats.map(c=>`<button class="chip" data-c="${esc(c)}" aria-pressed="${c==cat}">${esc(c)}</button>`).join("");
-  let L=ALL.filter(x=>(cat=="All"||(x.category||"Other")==cat)&&(x.title||"").toLowerCase().includes(q)&&(!dealsOnly||x.margin_pct>0)&&(!savedOnly||ST[x.hash]));
+  let L=ALL.filter(x=>(cat=="All"||(x.category||"Other")==cat)&&(x.title||"").toLowerCase().includes(q)&&(!dealsOnly||x.margin_pct>0)&&(!savedOnly||ST[x.hash])&&(!newOnly||+new Date(x.first_seen)>LV));
   const key={score:x=>-x.score,demand:x=>-x.demand,margin:x=>-x.margin_pct,dist:x=>x.distance_km==null?1e9:x.distance_km,new:x=>mins(x.first_seen)};
   L.sort((a,b)=>key[s](a)-key[s](b));
   const latest=ALL.reduce((m,x)=>Math.max(m,+new Date(x.last_seen)),0);
   const lm=latest?Math.round((Date.now()-latest)/6e4):null;
   $("upd").textContent=lm==null?"No listings yet":"Last scan "+(lm<60?lm+" min":Math.floor(lm/60)+" h")+" ago";
   if(lm!=null&&lm>180)note("The scanner has not saved anything for over 3 hours. Check the Actions tab on GitHub.");
+  try{const nb=ALL.filter(x=>+new Date(x.first_seen)>LV).length;$("newBtn").textContent="New since last visit ("+nb+")";navigator.setAppBadge&&navigator.setAppBadge(nb)}catch(e){}
   const fresh=ALL.filter(x=>mins(x.first_seen)<1440).length,best=ALL.reduce((m,x)=>Math.max(m,x.margin_pct||0),0);
   const byCat={};ALL.forEach(x=>{(byCat[x.category||"Other"]??=[]).push(x)});
   const avg=(a,f)=>a.reduce((t,x)=>t+(f(x)||0),0)/a.length;
   const hot=Object.entries(byCat).sort((a,b)=>avg(b[1],x=>x.demand)-avg(a[1],x=>x.demand))[0];
-  $("sum").innerHTML=[[ALL.length,"active listings"],[fresh,"new in 24 h"],[best+"%","best margin"],[hot?hot[0]:"-","hottest category"]].map(a=>`<div><span class="num">${esc(a[0])}</span><small>${a[1]}</small></div>`).join("");
+  $("sum").innerHTML=[[ALL.length,"active listings"],[fresh,"new in 24 h"],[best+"%","best margin"],[hot?hot[0]:"-","hottest category"],[GONE,"sold or removed (48 h)"]].map(a=>`<div><span class="num">${esc(a[0])}</span><small>${a[1]}</small></div>`).join("");
   $("list").innerHTML=L.length?L.slice(0,100).map((x,i)=>{
-    const u=safeUrl(x.url),im=safeUrl(x.image_url),m=x.margin_pct||0,isNew=mins(x.first_seen)<180;
+    const u=safeUrl(x.url),im=safeUrl(x.image_url),m=x.margin_pct||0,isNew=+new Date(x.first_seen)>LV;
     return `<article class="item"><div class="pic">${EMO[x.category]||"🛒"}${im?`<img src="${esc(im)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">`:""}<span class="rank">#${i+1}</span></div><div>
 <div class="top"><div class="name">${esc(x.title)}</div><span class="tag${isNew?" new":""}">${isNew?"NEW":esc(x.source)}</span></div>
-<div class="meta">${esc(x.source)} · ${x.distance_km==null?"distance unknown":x.distance_km+" km"} · ${esc(ago(x.posted_at||x.first_seen))}${x.comments?" · "+x.comments+" likes":""}</div>
+<div class="meta">${esc(x.source)} · ${x.distance_km==null?"distance unknown":x.distance_km+" km"} · ${esc(ago(x.posted_at||x.first_seen))}${x.comments?" · "+x.comments+" likes":""}${x.sell_days?" · sells in ~"+Math.round(x.sell_days)+" d":""}</div>
 <div class="prices"><span class="price">${peso(x.price)}</span>${x.resale?`<span class="arrow">resells ~${peso(x.resale)}</span>`:""}<span class="gain${m<0?" neg":""}">${m>0?"+":""}${m}%</span></div>
 <div class="dem"><span>Demand ${x.demand}</span><div class="bar"><i style="width:${Math.min(100,x.demand||0)}%"></i></div><span>Score ${x.score}</span></div>
-<div class="acts">${u?`<a href="${esc(u)}" target="_blank" rel="noopener noreferrer">Open listing</a>`:""}<button data-save="${esc(x.hash)}">${ST[x.hash]?"Saved":"Save"}</button></div></div></article>`}).join(""):'<div class="empty">'+(ALL.length?"No items match these filters.":"Connected, but no listings are saved yet. Run the scanner on your computer (see README), then refresh.")+'</div>';
+<div class="acts">${u?`<a href="${esc(u)}" target="_blank" rel="noopener noreferrer">Open listing</a>`:""}<button data-bought="${esc(x.hash)}">Bought</button><button data-save="${esc(x.hash)}">${ST[x.hash]?"Saved":"Save"}</button></div></div></article>`}).join(""):'<div class="empty">'+(ALL.length?"No items match these filters.":"Connected, but no listings are saved yet. Run the scanner on your computer (see README), then refresh.")+'</div>';
   $("flow").innerHTML=Object.entries(byCat).sort((a,b)=>b[1].length-a[1].length).map(([c,a])=>`<div class="fl"><b>${esc(c)}</b><div class="bar a"><i style="width:${Math.round(avg(a,x=>x.demand))}%"></i></div><small>${a.length} items · avg ${peso(avg(a,x=>x.price))} · ${Math.round(avg(a,x=>x.margin_pct))}%</small></div>`).join("")||'<div class="empty">No data yet.</div>';
 }
 $("cats").onclick=e=>{const b=e.target.closest("button");if(b){cat=b.dataset.c;render()}};
 $("q").oninput=render;$("sort").onchange=render;
 $("dealsBtn").onclick=e=>{dealsOnly=!dealsOnly;e.target.setAttribute("aria-pressed",dealsOnly);render()};
 $("savedBtn").onclick=e=>{savedOnly=!savedOnly;e.target.setAttribute("aria-pressed",savedOnly);render()};
-$("list").onclick=e=>{const k=e.target.dataset.save;if(!k)return;ST[k]=!ST[k];try{localStorage.setItem("mf-saved",JSON.stringify(ST))}catch(x){}render()};
+$("list").onclick=e=>{const bk=e.target.dataset.bought;if(bk){const x=ALL.find(y=>y.hash==bk);if(!x)return;const n=parseFloat(prompt("How much did you pay (₱)?",x.price));if(!(n>0))return;TR.push({id:Date.now(),item:x.title,cat:x.category||"Other",buy:n,boughtAt:new Date().toISOString(),sell:null});saveTR();note("Added to your Profit tab.");return}
+const k=e.target.dataset.save;if(!k)return;ST[k]=!ST[k];try{localStorage.setItem("mf-saved",JSON.stringify(ST))}catch(x){}render()};
 $("scanBtn").onclick=async e=>{
   const b=e.target,last=+(localStorage.getItem("mf-last-scan")||0);
   if(Date.now()-last<6e5){note("A scan was started less than 10 minutes ago. Please wait for it to finish.");return}
@@ -121,5 +140,33 @@ $("scanBtn").onclick=async e=>{
     else note("Could not start the scan: "+esc(err.message));
   }finally{b.disabled=false;b.textContent="Scan now"}
 };
+
+const LV=+(localStorage.getItem("mf-visit")||Date.now()-3*36e5);let newOnly=false,TR=[];
+document.addEventListener("visibilitychange",()=>{if(document.hidden)try{localStorage.setItem("mf-visit",Date.now())}catch(e){}});
+$("newBtn").onclick=e=>{newOnly=!newOnly;e.target.setAttribute("aria-pressed",newOnly);render()};
+try{TR=JSON.parse(localStorage.getItem("mf-trades")||"[]")}catch(e){}
+const saveTR=()=>{try{localStorage.setItem("mf-trades",JSON.stringify(TR))}catch(e){}};
+$("tCat").innerHTML=Object.keys(EMO).map(c=>`<option>${c}</option>`).join("");
+$("nav").onclick=e=>{const b=e.target.closest("button");if(!b)return;const v=b.dataset.v;document.querySelectorAll("#nav button").forEach(x=>x.setAttribute("aria-pressed",x==b));["deals","profit","settings"].forEach(n=>$("v-"+n).hidden=n!==v);if(v=="profit")renderProfit();if(v=="settings")loadSettings()};
+function renderProfit(){
+  const sold=TR.filter(t=>t.sell!=null),stock=TR.filter(t=>t.sell==null),profit=sold.reduce((s,t)=>s+t.sell-t.buy,0),cost=sold.reduce((s,t)=>s+t.buy,0);
+  $("pSum").innerHTML=[[peso(profit),"profit"],[cost?Math.round(profit/cost*100)+"%":"-","return"],[stock.length,"in stock"],[peso(stock.reduce((s,t)=>s+t.buy,0)),"money tied up"]].map(a=>`<div><span class="num">${esc(a[0])}</span><small>${a[1]}</small></div>`).join("");
+  $("pList").innerHTML=TR.length?TR.slice().reverse().map(t=>`<div class="ag"><div><b>${esc(t.item)}</b><span>${esc(t.cat||"Other")} · paid ${peso(t.buy)}${t.sell!=null?" · sold "+peso(t.sell)+" · "+(t.sell>=t.buy?"+":"")+peso(t.sell-t.buy):""}</span></div><div class="acts">${t.sell==null?`<button data-sold="${t.id}">Sold</button>`:""}<button data-del="${t.id}">Delete</button></div></div>`).join(""):'<div class="empty">Nothing yet. Add what you buy, or tap Bought on a listing.</div>';
+  const byC={};sold.forEach(t=>{const c=t.cat||"Other";(byC[c]??=[0,0]);byC[c][0]+=t.sell-t.buy;byC[c][1]++});
+  $("pCat").innerHTML=Object.entries(byC).map(([c,v])=>`<div class="fl"><b>${esc(c)}</b><span></span><small>${v[1]} sold · ${peso(v[0])}</small></div>`).join("")||'<div class="empty">Mark items as sold to see profit by category.</div>';
+}
+$("tAdd").onclick=()=>{const item=$("tItem").value.trim(),buy=parseFloat($("tBuy").value);if(!item||!(buy>0)){note("Enter the item and what you paid.");return}TR.push({id:Date.now(),item,cat:$("tCat").value,buy,boughtAt:new Date().toISOString(),sell:null});saveTR();$("tItem").value="";$("tBuy").value="";renderProfit()};
+$("pList").onclick=e=>{const s=e.target.dataset.sold,d=e.target.dataset.del;
+  if(s){const t=TR.find(x=>x.id==s),p=parseFloat(prompt("Sold for (₱)?"));if(!t||!(p>=0))return;t.sell=p;t.soldAt=new Date().toISOString();saveTR();renderProfit()}
+  if(d&&confirm("Delete this item?")){TR=TR.filter(x=>x.id!=d);saveTR();renderProfit()}};
+$("tCsv").onclick=()=>{const q=v=>'"'+String(v??"").replace(/"/g,'""')+'"';const rows=[["item","category","paid","sold_for","profit","bought_at","sold_at"],...TR.map(t=>[t.item,t.cat,t.buy,t.sell??"",t.sell==null?"":t.sell-t.buy,t.boughtAt||"",t.soldAt||""])];const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([rows.map(r=>r.map(q).join(",")).join("\n")],{type:"text/csv"}));a.download="market-flow-profit.csv";a.click()};
+const H=()=>({apikey:C.anonKey,Authorization:"Bearer "+C.anonKey}),API=()=>(C.url||"").replace(/\/$/,"");
+async function loadSettings(){if(!C.url)return;try{const s=(await(await fetch(API()+"/rest/v1/settings?select=*&id=eq.1",{headers:H()})).json())[0]||{};$("sWatch").value=(s.watch||[]).join(", ");$("sMargin").value=s.min_margin??"";$("sPrice").value=s.max_price??"";$("sKm").value=s.max_km??"";try{$("sPass").value=localStorage.getItem("mf-pass")||""}catch(e){}}catch(e){note("Could not load settings.")}}
+$("sSave").onclick=async()=>{const n=id=>{const v=parseFloat($(id).value);return Number.isFinite(v)?v:null};
+  const body={p_pass:$("sPass").value,p_watch:$("sWatch").value.split(",").map(s=>s.trim()).filter(Boolean),p_min_margin:n("sMargin"),p_max_price:n("sPrice"),p_max_km:n("sKm")};
+  try{const r=await fetch(API()+"/rest/v1/rpc/save_settings",{method:"POST",headers:{...H(),"content-type":"application/json"},body:JSON.stringify(body)});
+    if(!r.ok)throw new Error(r.status==400||r.status==404?"wrong passcode, or migration-2.sql was not run":"HTTP "+r.status);
+    try{localStorage.setItem("mf-pass",$("sPass").value)}catch(e){}note("Settings saved. They apply on the next scan.")}catch(e){note("Could not save: "+esc(e.message))}};
+if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
 load();setInterval(load,60000);
 </script></body></html>

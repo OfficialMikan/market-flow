@@ -28,7 +28,7 @@ export function dedupe(list) {
   }
   return [...seen.values()];
 }
-export function rank(list, radius = CONFIG.radiusKm) {
+export function rank(list, radius = CONFIG.radiusKm, speed = {}) {
   const groups = {};
   for (const l of list) (groups[l.name] ??= []).push(l.price);
   const out = [];
@@ -40,12 +40,34 @@ export function rank(list, radius = CONFIG.radiusKm) {
     const resale = (g.length >= 3 ? median(g) : null) ?? l.resale ?? null;
     const margin = resale ? ((resale * FRICTION - l.price) / l.price) * 100 : 0;
     const engage = Math.min(100, (l.comments || 0) * 5 + (l.likes || 0) * 4);
-    const demand = Math.round(0.65 * (l.demand ?? 50) + 0.35 * engage);
+    const days = speed[l.name];
+    const sp = days == null ? null : Math.max(0, Math.min(100, 100 - (days - 1) / 29 * 100)); // 1 day = 100, 30+ days = 0
+    const demand = Math.round(sp == null ? 0.65 * (l.demand ?? 50) + 0.35 * engage : 0.4 * (l.demand ?? 50) + 0.2 * engage + 0.4 * sp);
     const prox = dist == null ? 40 : Math.max(0, 100 - dist / radius * 100);
     const m = Math.min(100, Math.max(0, margin * 2));
-    out.push({ ...l, resale, marginPct: Math.round(margin), demand,
+    out.push({ ...l, resale, marginPct: Math.round(margin), demand, sellDays: days ?? null,
       distanceKm: dist == null ? null : Math.round(dist * 10) / 10,
       score: Math.round(0.45 * demand + 0.35 * m + 0.2 * prox) });
   }
   return out.sort((a, b) => b.score - a.score);
+}
+
+// Median days from posting to disappearing, per product name (needs 3+ sold/removed listings).
+export function speedByName(rows) {
+  const g = {};
+  for (const r of rows) {
+    const start = r.posted_at || r.first_seen;
+    if (!start || !r.removed_at || !r.name) continue;
+    const d = (new Date(r.removed_at) - new Date(start)) / 864e5;
+    if (d >= 0) (g[r.name] ??= []).push(d);
+  }
+  const out = {};
+  for (const [k, v] of Object.entries(g)) if (v.length >= 3) out[k] = Math.round(median(v) * 10) / 10;
+  return out;
+}
+// Listings that should have shown up again but did not. Null means "too many at once, probably a failed scrape".
+export function findGone(candidates, seen) {
+  const gone = candidates.filter(c => !seen.has(c.hash)).map(c => c.hash);
+  if (candidates.length >= 5 && gone.length / candidates.length > 0.6) return null;
+  return gone;
 }

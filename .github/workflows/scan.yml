@@ -28,6 +28,8 @@ jobs:
           RADIUS_KM: ${{ vars.RADIUS_KM || secrets.RADIUS_KM }}
           APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
           APIFY_MAX_ITEMS: ${{ vars.APIFY_MAX_ITEMS || secrets.APIFY_MAX_ITEMS }}
+          APIFY_BUDGET_USD: ${{ vars.APIFY_BUDGET_USD || secrets.APIFY_BUDGET_USD }}
+          APIFY_STOP_AT_PCT: ${{ vars.APIFY_STOP_AT_PCT || secrets.APIFY_STOP_AT_PCT }}
           FB_LOCATION: ${{ vars.FB_LOCATION || secrets.FB_LOCATION }}
           FB_RADIUS_KM: ${{ vars.FB_RADIUS_KM || secrets.FB_RADIUS_KM }}
           FB_MAX_ITEMS: ${{ vars.FB_MAX_ITEMS || secrets.FB_MAX_ITEMS }}

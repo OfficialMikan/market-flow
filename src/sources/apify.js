@@ -1,7 +1,7 @@
 // Cloud scouting through Apify: Apify's residential proxies fetch Carousell for you, so this runs fine
 // from GitHub Actions with no computer of yours involved. Output fields follow crawloop/carousell-scraper.
 import { runActor, toPrice, noteUnmapped } from "./apifyCore.js";
-export const name = "carousell_apify", needsBrowser = false;
+export const name = "carousell_apify", needsBrowser = false, usesApify = true, recencySorted = true;
 const ACTOR = () => process.env.APIFY_ACTOR || "crawloop~carousell-scraper";
 
 export function mapItem(i) {

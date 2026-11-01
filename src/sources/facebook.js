@@ -1,7 +1,7 @@
 // Facebook Marketplace via Apify (public listings, no Facebook login or cookies of yours involved).
 // FB_LOCATION = the place segment of a Marketplace URL, e.g. facebook.com/marketplace/<THIS>/search/?query=x
 import { runActor, toPrice, noteUnmapped } from "./apifyCore.js";
-export const name = "facebook_marketplace", needsBrowser = false;
+export const name = "facebook_marketplace", needsBrowser = false, usesApify = true;
 const ACTOR = () => process.env.FB_ACTOR || "deepmine~facebook-marketplace-scraper";
 const num = v => (v === null || v === undefined || v === "" || !Number.isFinite(+v)) ? undefined : +v;
 
