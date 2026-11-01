@@ -1,2 +1,2 @@
 // Paste your Supabase Project URL and the ANON (public) key. Never put the service_role key here.
-window.MF_CONFIG = { url: "", anonKey: "" };
+window.MF_CONFIG = { url: "https://bzbrjrnwgeymxdohxqur.supabase.co", anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ6YnJqcm53Z2V5bXhkb2h4cXVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTM0NjM4MTAsImV4cCI6MjEwOTAzOTgxMH0.gp_rBziiYZ89fcuBB2XQpPQeS2T5wd5zLzxgNpmRHtA" };
