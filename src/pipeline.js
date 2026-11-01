@@ -38,14 +38,14 @@ export function rank(list, radius = CONFIG.radiusKm) {
     if (dist != null && dist > radius) continue;
     const g = groups[l.name];
     const resale = (g.length >= 3 ? median(g) : null) ?? l.resale ?? null;
-    const margin = resale ? ((resale * CONFIG.friction - l.price) / l.price) * 100 : 0;
-    const engage = Math.min(100, (l.comments || 0) * CONFIG.engagementWeights.comments + (l.likes || 0) * CONFIG.engagementWeights.likes);
-    const demand = Math.round(CONFIG.demandWeights.base * (l.demand ?? 50) + CONFIG.demandWeights.engagement * engage);
+    const margin = resale ? ((resale * FRICTION - l.price) / l.price) * 100 : 0;
+    const engage = Math.min(100, (l.comments || 0) * 5 + (l.likes || 0) * 4);
+    const demand = Math.round(0.65 * (l.demand ?? 50) + 0.35 * engage);
     const prox = dist == null ? 40 : Math.max(0, 100 - dist / radius * 100);
     const m = Math.min(100, Math.max(0, margin * 2));
     out.push({ ...l, resale, marginPct: Math.round(margin), demand,
       distanceKm: dist == null ? null : Math.round(dist * 10) / 10,
-      score: Math.round(CONFIG.weights.demand * demand + CONFIG.weights.margin * m + CONFIG.weights.proximity * prox) });
+      score: Math.round(0.45 * demand + 0.35 * m + 0.2 * prox) });
   }
   return out.sort((a, b) => b.score - a.score);
 }
