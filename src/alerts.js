@@ -14,8 +14,8 @@ export async function alertDeals(deals, sb) {
   if (!chans.length || !deals.length) return;
   const sent = [];
   for (const d of deals.slice(0, 10)) {
-    const msg = { title: `₱${d.price} ${d.title}`.slice(0, 80), url: d.url,
-      text: `${d.title}\n₱${d.price} → resale ~₱${d.resale ?? "?"} (${d.marginPct}%)\nDemand ${d.demand} · ${d.distanceKm ?? "?"} km · score ${d.score}\n${d.url}` };
+    const msg = { title: `${d.newDrop >= 10 ? "Price drop " : ""}₱${d.price} ${d.title}`.slice(0, 80), url: d.url,
+      text: `${d.title}\nBuy ₱${d.price} → sell ~₱${d.resale ?? "?"} (${d.sellBasis || "estimate"}), net ₱${d.net ?? "?"} (${d.marginPct}% return)\nBuyers asking: ${d.matches?.length || 0} · demand ${d.demand} · ${d.distanceKm ?? "?"} km${d.newDrop >= 10 ? ` · price dropped ${d.newDrop}%` : ""}\n${d.url}` };
     let ok = false;
     for (const c of chans) {
       try { const r = await c.send(msg); if (r.ok) ok = true; else console.error(`${c.name} alert failed: HTTP ${r.status}`); }
@@ -26,7 +26,7 @@ export async function alertDeals(deals, sb) {
   await markAlerted(sb, sent);
 }
 
-export const passesRules = (r, x) => r.score >= x.minScore && (r.marginPct ?? 0) >= (x.minMargin || 0)
+export const passesRules = (r, x) => r.intent !== "wanted" && r.score >= x.minScore && (r.marginPct ?? 0) >= (x.minMargin || 0) && (x.minNet == null || (r.net ?? -1e9) >= x.minNet)
   && (x.maxPrice == null || r.price <= x.maxPrice) && (x.maxKm == null || r.distanceKm == null || r.distanceKm <= x.maxKm);
 export async function notify(title, text) {
   for (const c of channels()) { try { await c.send({ title, text }); } catch (e) { console.error(`${c.name} notify failed:`, e.message); } }

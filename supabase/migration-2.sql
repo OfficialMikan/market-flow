@@ -29,5 +29,5 @@ end $$;
 grant execute on function save_settings(text, text[], numeric, numeric, numeric) to anon;
 
 -- CHANGE THE TEXT BELOW to a long random passcode (20+ characters) before running:
-insert into app_secret (id, passcode) values (1, 'AVeryLongPasswordForMarketFlow')
+insert into app_secret (id, passcode) values (1, 'CHANGE-ME-TO-A-LONG-RANDOM-PASSCODE')
 on conflict (id) do update set passcode = excluded.passcode;

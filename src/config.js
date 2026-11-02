@@ -2,9 +2,13 @@ const env = (k, d) => process.env[k] || d;
 export const CONFIG = {
   home: { name: env("HOME_NAME", "Magalang, Pampanga"), lat: +env("HOME_LAT", 15.2147), lng: +env("HOME_LNG", 120.6586) },
   radiusKm: +env("RADIUS_KM", 25),
-  sources: env("SOURCES", process.env.APIFY_TOKEN ? "facebook_marketplace,carousell_apify" : "carousell").split(",").map(s => s.trim()).filter(Boolean),
-  watch: env("WATCH", "nintendo switch,iphone 11,mechanical keyboard,gaming mouse,laptop").split(",").map(s => s.trim()).filter(Boolean),
-  alertMinScore: +env("ALERT_MIN_SCORE", 75),
+  sources: env("SOURCES", process.env.APIFY_TOKEN ? "facebook_marketplace,facebook_groups" : "carousell").split(",").map(s => s.trim()).filter(Boolean),
+  watch: env("WATCH", "").split(",").map(s => s.trim()).filter(Boolean),
+  alertMinScore: +env("ALERT_MIN_SCORE", 60),
+  categories: env("CATEGORIES", "").split(",").map(s => s.trim()).filter(Boolean),
+  groups: env("FB_GROUPS", "").split(",").map(s => s.trim()).filter(Boolean),
+  perRun: +env("QUERIES_PER_RUN", 3),     // searches per scan, rotated through the catalog
+  detailTopN: +env("DETAIL_TOP_N", 3),    // deals that get a full detail fetch (description, seller)
 };
 // Approximate town centers, used to estimate distance from a listing's place text.
 export const TOWNS = {

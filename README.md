@@ -1,5 +1,18 @@
 # Market Flow Agent
 
+## Version 4: what to do (in this order)
+1. **Database:** in Supabase > SQL Editor run `schema.sql`, then `migration-2.sql`, then `migration-3.sql` (paste each file's text, not its name). Set your own passcode in migration-2 first. Migrations are safe to run twice.
+2. **Keys:** rotate any key that was ever committed. Real values live only in `.env` and GitHub Secrets.
+3. **Facebook Marketplace:** set `FB_LOCATION` (the place part of your Marketplace URL).
+4. **Facebook groups (optional):** in the dashboard's Settings tab, paste links of PUBLIC groups near you, one per line. Private groups cannot be read, and this never uses your Facebook login.
+5. **Scan:** Actions > scan > Run workflow, then open the dashboard (add `?demo` to preview it with sample data).
+
+**What the scanner does now:** rotates through a tech catalog of about 200 searches (`QUERIES_PER_RUN` per scan), reads public group posts, fetches full details (description, specs, seller) for only the few best-priced listings (`DETAIL_TOP_N`), asks the free AIs to extract specs, condition, issues and whether each post is for sale or wanted, then matches every seller with buyers and works out your net profit. Confidence: A buyer found, B sold comps, C asking comps, D AI estimate.
+
+**Privacy:** seller names, profile links and full descriptions are saved in a separate table that the public key cannot read. They only appear in the dashboard after you enter your passcode. Phone numbers, emails and links are stripped from everything public.
+
+**Cost (Apify bills per result):** at the defaults, about $0.02 per scan for Marketplace and about $0.015 per public group, with 4 scans a day. One or two groups should fit the free $5; more groups, more searches per scan or a faster schedule will not. The budget guard pauses Apify sources at 90% of `APIFY_BUDGET_USD`. The Carousell scraper needs residential proxies and returns nothing without them, so it is off by default.
+
 ## Automatic cloud setup (recommended, no computer needed)
 GitHub Actions runs the scan on a schedule and Apify fetches Carousell through residential proxies, which gets past the block that stops GitHub's own servers.
 1. Create a free account at apify.com (no card). Copy your API token (Settings > API & Integrations). Set a monthly usage limit of $5 in your account's billing/limits settings so you can never be charged.

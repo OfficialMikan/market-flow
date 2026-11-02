@@ -30,6 +30,13 @@ jobs:
           APIFY_MAX_ITEMS: ${{ vars.APIFY_MAX_ITEMS || secrets.APIFY_MAX_ITEMS }}
           APIFY_BUDGET_USD: ${{ vars.APIFY_BUDGET_USD || secrets.APIFY_BUDGET_USD }}
           APIFY_STOP_AT_PCT: ${{ vars.APIFY_STOP_AT_PCT || secrets.APIFY_STOP_AT_PCT }}
+          FB_GROUPS: ${{ vars.FB_GROUPS || secrets.FB_GROUPS }}
+          GROUP_MAX_POSTS: ${{ vars.GROUP_MAX_POSTS || secrets.GROUP_MAX_POSTS }}
+          GROUP_HOURS: ${{ vars.GROUP_HOURS || secrets.GROUP_HOURS }}
+          QUERIES_PER_RUN: ${{ vars.QUERIES_PER_RUN || secrets.QUERIES_PER_RUN }}
+          DETAIL_TOP_N: ${{ vars.DETAIL_TOP_N || secrets.DETAIL_TOP_N }}
+          TRAVEL_PESO_PER_KM: ${{ vars.TRAVEL_PESO_PER_KM || secrets.TRAVEL_PESO_PER_KM }}
+          CATEGORIES: ${{ vars.CATEGORIES || secrets.CATEGORIES }}
           FB_LOCATION: ${{ vars.FB_LOCATION || secrets.FB_LOCATION }}
           FB_RADIUS_KM: ${{ vars.FB_RADIUS_KM || secrets.FB_RADIUS_KM }}
           FB_MAX_ITEMS: ${{ vars.FB_MAX_ITEMS || secrets.FB_MAX_ITEMS }}

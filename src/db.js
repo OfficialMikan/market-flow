@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { speedByName, findGone } from "./pipeline.js";
+import { speedByName, soldMedianByName, findGone, redact, sellerScore } from "./pipeline.js";
 export const client = () =>
   process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY
     ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY) : null;
@@ -7,21 +7,41 @@ export const client = () =>
 export async function save(sb, rows) {
   const old = new Map();
   for (let i = 0; i < rows.length; i += 100) {
-    const { data, error } = await sb.from("listings").select("hash,price,alerted").in("hash", rows.slice(i, i + 100).map(r => r.hash));
+    const { data, error } = await sb.from("listings").select("hash,price,alerted,prev_price,price_drop_pct").in("hash", rows.slice(i, i + 100).map(r => r.hash));
     if (error) throw error;
     for (const d of data) old.set(d.hash, d);
   }
   const now = new Date().toISOString();
-  const recs = rows.map(r => ({ hash: r.hash, source: r.source, url: r.url, title: r.title, name: r.name, category: r.category,
-    price: r.price, resale: r.resale, margin_pct: r.marginPct, demand: r.demand, score: r.score, distance_km: r.distanceKm,
-    location_text: r.locationText || null, image_url: r.imageUrl || null, comments: r.comments || 0, posted_at: r.postedAt || null, last_seen: now, q: r.q || null, removed_at: null, sell_days: r.sellDays ?? null }));
+  const withDrop = rows.map(r => {
+    const o = old.get(r.hash), p = r.price ?? null;
+    const dropped = o && p != null && +o.price > p ? Math.round((o.price - p) / o.price * 100) : 0;
+    const changed = o && p != null && +o.price !== p;
+    return { ...r, alerted: o?.alerted || false, newDrop: dropped, prevPrice: changed ? +o.price : (o?.prev_price ?? null), dropPct: dropped || (changed ? 0 : (o?.price_drop_pct ?? 0)) };
+  });
+  const recs = withDrop.map(r => ({ hash: r.hash, source: r.source, url: r.url, title: redact(r.title).slice(0, 140) || "(no title)", name: r.name, category: r.category,
+    price: r.price ?? null, resale: r.resale ?? null, margin_pct: r.marginPct, demand: r.demand, score: r.score, distance_km: r.distanceKm,
+    location_text: redact(r.locationText || "").slice(0, 120) || null, image_url: r.imageUrl || null, comments: r.comments || 0, posted_at: r.postedAt || null, last_seen: now,
+    q: r.q || null, removed_at: null, sell_days: r.sellDays ?? null, intent: r.intent || "sell", kind: r.kind || "listing", brand: r.brand || null,
+    specs: r.specs || [], condition: r.conditionTxt || null, issues: r.issues || [], issue_level: r.issueLevel || 0, summary: r.summary || null,
+    images: (r.images || []).filter(u => /^https:\/\//.test(u)).slice(0, 6), sell_price: r.sellPrice ?? null, sell_basis: r.sellBasis || null,
+    confidence: r.confidence || null, net_profit: r.net ?? null, travel_cost: r.travel ?? null, offer_price: r.offerPrice ?? null,
+    prev_price: r.prevPrice, price_drop_pct: r.dropPct, matches: r.matches || [], negotiable: r.negotiable ?? null, area: r.area || null }));
+  const hint = " (did you run supabase/migration-2.sql and migration-3.sql in Supabase?)";
   for (let i = 0; i < recs.length; i += 100) {
     const { error } = await sb.from("listings").upsert(recs.slice(i, i + 100), { onConflict: "hash" });
-    if (error) throw new Error(error.message + " (did you run supabase/migration-2.sql in Supabase?)");
+    if (error) throw new Error(error.message + hint);
   }
-  const hist = rows.filter(r => !old.has(r.hash) || +old.get(r.hash).price !== r.price).map(r => ({ hash: r.hash, price: r.price }));
+  // Seller names, profile links and full descriptions go to a private table the public key cannot read.
+  const priv = withDrop.filter(r => r.seller || r.description || r.meetup).map(r => ({ hash: r.hash, seller_name: r.seller?.name || null, seller_url: r.seller?.url || null,
+    seller_rating: r.seller?.rating ?? null, seller_reviews: r.seller?.reviews ?? null, seller_tenure: r.seller?.tenureYears ?? null, seller_score: sellerScore(r.seller),
+    description: String(r.description || "").slice(0, 2000) || null, meetup: r.meetup || null, updated_at: now }));
+  for (let i = 0; i < priv.length; i += 100) {
+    const { error } = await sb.from("listing_private").upsert(priv.slice(i, i + 100), { onConflict: "hash" });
+    if (error) throw new Error(error.message + hint);
+  }
+  const hist = withDrop.filter(r => r.price > 0 && (!old.has(r.hash) || +old.get(r.hash).price !== r.price)).map(r => ({ hash: r.hash, price: r.price }));
   if (hist.length) { const { error } = await sb.from("price_history").insert(hist); if (error) throw error; }
-  return rows.map(r => ({ ...r, alerted: old.get(r.hash)?.alerted || false }));
+  return withDrop;
 }
 export async function markAlerted(sb, hashes) {
   if (hashes.length) await sb.from("listings").update({ alerted: true }).in("hash", hashes);
@@ -32,10 +52,16 @@ export async function loadSettings(sb) {
   if (error) { console.error("Could not read settings (run supabase/migration-2.sql):", error.message); return {}; }
   return data || {};
 }
-export async function loadSpeed(sb) {
-  const { data } = await sb.from("listings").select("name,posted_at,first_seen,removed_at").not("removed_at", "is", null).limit(3000);
-  return speedByName(data || []);
+// Market knowledge from past scans: sell speed, sold prices, open buyer requests and current supply.
+export async function loadContext(sb) {
+  const since = new Date(Date.now() - 7 * 864e5).toISOString();
+  const [gone, wanted, supply] = await Promise.all([
+    sb.from("listings").select("name,price,intent,posted_at,first_seen,removed_at").not("removed_at", "is", null).limit(3000),
+    sb.from("listings").select("hash,url,name,price,area,posted_at,first_seen").eq("intent", "wanted").is("removed_at", null).gte("last_seen", since).limit(500),
+    sb.from("listings").select("hash,url,title,name,price,distance_km").eq("intent", "sell").is("removed_at", null).gte("last_seen", since).limit(1500)]);
+  return { speed: speedByName(gone.data || []), soldPrice: soldMedianByName(gone.data || []), wanted: wanted.data || [], supply: supply.data || [] };
 }
+export async function setCursor(sb, cursor) { await sb.from("settings").update({ cursor }).eq("id", 1); }
 // A listing counts as sold/removed only if the recency-sorted search window must have shown it and it is missing.
 export async function markRemoved(sb, coverage, seen) {
   let total = 0;

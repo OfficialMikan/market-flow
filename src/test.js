@@ -11,7 +11,7 @@ assert.equal(p.price, 1100); assert.equal(p.title, "Mechanical keyboard 75% RGB"
 const raw = [...await mock.search("a"), ...await mock.search("b")];
 const u = dedupe(raw); assert.equal(u.length, raw.length / 2);
 const ranked = rank(u.map(heuristic));
-assert.equal(ranked[0].price, 1100, "cheapest keyboard should rank first");
+assert.equal(ranked.filter(r => r.intent !== "wanted")[0].price, 1100, "cheapest keyboard should rank first");
 assert.ok(ranked.every(r => !/tarlac/i.test(r.locationText)), "out-of-radius item must be dropped");
 console.log("all tests passed");
 
@@ -106,7 +106,7 @@ assert.deepEqual(speedByName(srows), { "switch oled": 2 }); assert.deepEqual(spe
 const cand = [..."abcdefgh"].map(h => ({ hash: h }));
 assert.deepEqual(findGone(cand, new Set([..."abcdef"])), ["g", "h"]); assert.equal(findGone(cand, new Set()), null);
 const base = { name: "switch oled", price: 1000, resale: 1500, demand: 50, comments: 0, url: "u" };
-const slow = rank([{ ...base }], 25, { "switch oled": 30 })[0], fast = rank([{ ...base }], 25, { "switch oled": 1 })[0];
+const slow = rank([{ ...base }], 25, { speed: { "switch oled": 30 } })[0], fast = rank([{ ...base }], 25, { speed: { "switch oled": 1 } })[0];
 assert.ok(fast.demand > slow.demand && fast.sellDays === 1);
 const { markRemoved } = await import("./db.js");
 const hit = []; const mk = data => { const q = { select: () => q, eq: () => q, is: () => q, gte: () => q, limit: () => q, update: () => q, in: (_c, h) => { hit.push(h); return q; }, then: res => res({ data, error: null }) }; return q; };
@@ -119,3 +119,52 @@ globalThis.fetch = lim(1); assert.equal((await checkBudget()).ok, true);
 globalThis.fetch = async () => ({ ok: false, status: 404 }); assert.equal((await checkBudget()).ok, true);
 globalThis.fetch = realFetch;
 console.log("v3 backend tests passed");
+
+// ===== v4: buyer matching, privacy, details, groups, catalog =====
+const P = await import("./pipeline.js"), A = await import("./ai.js"), Cat = await import("./catalog.js");
+assert.ok(P.sameProduct("rtx 3060", "RTX 3060 graphics")); assert.ok(!P.sameProduct("rtx 3060", "rtx 3060 ti"), "ti is a different card");
+assert.ok(!P.sameProduct("iphone 11", "iphone 12")); assert.ok(!P.sameProduct("switch oled", "switch lite")); assert.ok(P.sameProduct("iphone 11 128gb", "iphone 11 128gb"));
+assert.equal(P.redact("Call 0917 123 4567 or +63 917-123-4567, mail a.b@x.com https://fb.com/x ₱1,200"), "Call or , mail ₱1,200");
+assert.equal(P.sellerScore(null), null); assert.equal(P.sellerScore({ rating: 5, reviews: 100, tenureYears: 5 }), 100); assert.ok(P.sellerScore({ rating: 3, reviews: 2 }) < 60);
+assert.equal(P.dedupe([{ url: "https://a/1", kind: "post" }, { url: "https://a/2", price: 0 }, { url: "https://a/3", price: 5 }]).length, 2, "posts may lack a price, listings may not");
+assert.equal(A.textPrice("selling, price ₱1,800 only"), 1800); assert.equal(A.textPrice("php 2.5k"), 2500); assert.equal(A.textPrice("no price here"), null);
+const nm = A.norm({ intent: "sell", name: "Switch OLED", category: "Gaming", price: 10500, specs: ["64GB", "call 09171234567"], issues: ["scratch on screen"], issue_level: 1, summary: "Switch OLED, light use. Text 09171234567" }, { title: "Switch", price: 10000 });
+assert.equal(nm.name, "switch oled"); assert.equal(nm.price, 10500); assert.deepEqual(nm.specs, ["64GB", "call"]); assert.ok(!/0917/.test(nm.summary)); assert.equal(nm.issueLevel, 1);
+const hw = A.heuristic({ title: "WTB RTX 3060", description: "looking for rtx 3060, budget php 12k" }); assert.equal(hw.intent, "wanted"); assert.equal(hw.price, 12000); assert.equal(hw.name, "rtx 3060");
+// matching: supply <-> wanted, real sold price beats asking comps, issues cut the price, offer stays below ask
+const sup = (n, price, extra = {}) => ({ url: "https://s/" + n + price, hash: "h" + price, title: n, name: n, price, intent: "sell", demand: 60, comments: 0, ...extra });
+const want = { url: "https://w/1", hash: "w1", title: "WTB rtx 3060", name: "rtx 3060", intent: "wanted", price: 14000, kind: "post", demand: 70 };
+const batch = [sup("rtx 3060", 9000), sup("rtx 3060", 11000), sup("rtx 3060", 12000), sup("rtx 3060", 12500), want];
+const rk = rank(batch, 25, {});
+const cheap = rk.find(r => r.price === 9000); assert.equal(cheap.confidence, "A"); assert.equal(cheap.sellBasis, "buyer"); assert.equal(cheap.matches[0].url, "https://w/1");
+assert.ok(cheap.net > 1500 && cheap.net < 3000, "net " + cheap.net); assert.ok(cheap.offerPrice < 9000 && cheap.offerPrice >= 5400);
+const wrow = rk.find(r => r.intent === "wanted"); assert.ok(wrow.matches.length >= 1 && wrow.matches[0].net > 0 && wrow.matches.every(m => m.net > 0));
+const noBuyer = rank(batch.filter(r => r.intent !== "wanted"), 25, { soldPrice: { "rtx 3060": 11800 } }).find(r => r.price === 9000);
+assert.equal(noBuyer.sellBasis, "sold"); assert.equal(noBuyer.confidence, "B"); assert.equal(noBuyer.sellPrice, 11800);
+const dmg = rank([sup("rtx 3060", 9000, { issueLevel: 2 }), sup("rtx 3060", 9500), sup("rtx 3060", 10000), sup("rtx 3060", 10500)], 25, { soldPrice: { "rtx 3060": 11800 } });
+assert.ok(dmg.find(r => r.price === 9000).net < noBuyer.net - 1500, "major issue cuts the expected resale");
+assert.equal(P.soldMedianByName([1, 2, 3].map(i => ({ name: "x", price: 100 * i, removed_at: "2026-01-01" }))).x, 200);
+// details selection, catalog rotation, group + fb + carousell mapping
+const pool = [10, 100, 100, 100, 100].map((p, i) => ({ source: "carousell_apify", q: "k", kind: "listing", price: p, url: "u" + i }));
+assert.deepEqual(P.pickForDetails(pool, 3, ["carousell_apify"]).map(x => x.price), [10]); assert.equal(P.pickForDetails(pool, 3, ["facebook_marketplace"]).length, 0);
+const ql = Cat.buildQueryList(["Phones", "Gaming"]); assert.ok(ql.length >= 30 && ql[0] === "iphone 11" && ql[1] === "nintendo switch");
+const s1 = Cat.pickSlice(ql, 0, 6), s2 = Cat.pickSlice(ql, s1.next, 6); assert.equal(s1.queries.length, 6); assert.equal(s2.queries[0], ql[6]);
+assert.equal(Cat.pickSlice(ql, ql.length - 2, 4).queries[2], ql[0], "rotation wraps"); assert.ok(Cat.ALL_CATEGORIES.length >= 12);
+const G = await import("./sources/groups.js"), F = await import("./sources/facebook.js"), Ap = await import("./sources/apify.js");
+const gp = G.mapPost({ url: "https://www.facebook.com/groups/g/posts/1/", text: "Selling PS5 slim\nBrand new, ₱28,000 po. Angeles", time: "2026-11-01T01:00:00Z", user: { name: "Ana Cruz", profileUrl: "https://fb.com/ana" }, likesCount: 3 });
+assert.equal(gp.kind, "post"); assert.equal(gp.title, "Selling PS5 slim"); assert.equal(gp.seller.name, "Ana Cruz"); assert.equal(gp.postedAt, "2026-11-01T01:00:00.000Z"); assert.equal(G.mapPost({ url: "u", text: "hi" }), null);
+const fd = F.mapItem({ listingUrl: "https://fb/item/1", listingTitle: "GPU", priceAmount: 9000, description: "RTX 3060 12GB", condition: "Used - Good", sellerName: "Ben", sellerRatingAverage: 4.8, sellerRatingCount: 12, sellerJoinTime: "2019-01-01", listingPhotos: ["https://i/1.jpg", { url: "https://i/2.jpg" }], strikethroughPrice: "₱10,000" });
+assert.equal(fd.seller.name, "Ben"); assert.equal(fd.images.length, 2); assert.equal(fd.oldPrice, 10000); assert.ok(fd.seller.tenureYears > 5);
+const cd = Ap.mapItem({ url: "https://c/p/1", title: "Mac", price: 30000, description: "M1 8GB", seller: { username: "dealer1", url: "https://c/u/dealer1", rating: 4.9, reviewCount: 40, tenureYears: 3 }, isNegotiable: true, meetupLocation: "SM Clark" });
+assert.equal(cd.seller.name, "dealer1"); assert.equal(cd.negotiable, true); assert.equal(cd.meetup, "SM Clark");
+// save(): public table never gets seller names or descriptions; price drops are detected
+const { save } = await import("./db.js");
+const cap = { listings: [], listing_private: [], price_history: [] };
+const oldRows = [{ hash: "h1", price: 2000, alerted: true, prev_price: null, price_drop_pct: 0 }];
+const fsb = { from: t => ({ select: () => ({ in: async () => ({ data: oldRows, error: null }) }), upsert: async r => { cap[t].push(...r); return { error: null }; }, insert: async r => { cap[t].push(...r); return { error: null }; } }) };
+const saved = await save(fsb, [{ hash: "h1", source: "s", url: "https://x/1", title: "Mac call 09171234567", price: 1500, name: "mac", intent: "sell", seller: { name: "Secret Seller", url: "https://p", rating: 4.5, reviews: 10 }, description: "private words 09171234567", matches: [{ url: "u", budget: 1 }], specs: ["8GB"], images: ["https://i/1.jpg", "http://bad"] }]);
+assert.equal(saved[0].newDrop, 25); assert.equal(cap.listings[0].prev_price, 2000); assert.equal(cap.listings[0].price_drop_pct, 25);
+assert.ok(!JSON.stringify(cap.listings).includes("Secret Seller") && !JSON.stringify(cap.listings).includes("private words"), "seller + description stay out of the public table");
+assert.ok(!cap.listings[0].title.includes("0917")); assert.deepEqual(cap.listings[0].images, ["https://i/1.jpg"]);
+assert.equal(cap.listing_private[0].seller_name, "Secret Seller"); assert.ok(cap.listing_private[0].seller_score > 0); assert.equal(cap.price_history[0].price, 1500);
+console.log("v4 backend tests passed");

@@ -10,13 +10,13 @@ async function diagnose(actor) {
     console.error("  DEBUG log tail: " + log.slice(-700).replace(/\s*\n\s*/g, " | "));
   } catch (e) { console.error("  DEBUG could not read the Apify run log:", e.message); }
 }
-export async function runActor(actor, input) {
+export async function runActor(actor, input, opts = {}) {
   if (!process.env.APIFY_TOKEN) throw new Error("APIFY_TOKEN is not set");
   const r = await fetch(`${BASE}/acts/${actor}/run-sync-get-dataset-items`, {
     method: "POST", signal: AbortSignal.timeout(290000), headers: headers(), body: JSON.stringify(input) });
   if (!r.ok) throw new Error(`Apify HTTP ${r.status}: ${(await r.text()).slice(0, 300)}`);
   const items = await r.json();
-  if (!items.length) await diagnose(actor);
+  if (!items.length && !opts.quiet) await diagnose(actor);
   return items;
 }
 
@@ -42,3 +42,5 @@ export async function checkBudget() {
     return { ok: used < cap * (+(process.env.APIFY_STOP_AT_PCT || 90) / 100), used, cap };
   } catch (e) { return { ok: true, note: "budget check failed: " + e.message }; }
 }
+
+export const yearsSince = v => { const t = +new Date(v); return Number.isFinite(t) && t > 0 ? Math.round((Date.now() - t) / 31557600000 * 10) / 10 : null; };
