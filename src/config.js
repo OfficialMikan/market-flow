@@ -7,6 +7,10 @@ export const CONFIG = {
   alertMinScore: +env("ALERT_MIN_SCORE", 60),
   categories: env("CATEGORIES", "").split(",").map(s => s.trim()).filter(Boolean),
   groups: env("FB_GROUPS", "").split(",").map(s => s.trim()).filter(Boolean),
+  near: +env("NEAR_KM", 15), far: +env("FAR_KM", 50),   // zones: near, nearby, far (far listings are kept, just labeled)
+  haggle: +env("HAGGLE_PCT", 5), fee: +env("FEE_PCT", 3), // 5% off for haggling + 3% platform, payment and handling costs
+  detailMax: +env("DETAIL_MAX", 10), visionTopN: +env("VISION_TOP_N", 3), geocodeCap: +env("GEOCODE_CAP", 12),
+  discoverEvery: +env("DISCOVER_DAYS", 7), discoverEval: +env("DISCOVER_EVAL", 2), maxGroups: +env("MAX_GROUPS", 4),
   perRun: +env("QUERIES_PER_RUN", 3),     // searches per scan, rotated through the catalog
   detailTopN: +env("DETAIL_TOP_N", 3),    // deals that get a full detail fetch (description, seller)
 };

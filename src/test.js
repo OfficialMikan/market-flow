@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { haversine, dedupe, rank } from "./pipeline.js";
+import { haversine, dedupe, rank, fixTinyPrices } from "./pipeline.js";
 import { heuristic } from "./ai.js";
 import { parse } from "./sources/scrape.js";
 import * as mock from "./sources/mock.js";
@@ -10,9 +10,10 @@ const p = parse({ url: "https://x/p/1", text: "Rina\nMechanical keyboard 75% RGB
 assert.equal(p.price, 1100); assert.equal(p.title, "Mechanical keyboard 75% RGB");
 const raw = [...await mock.search("a"), ...await mock.search("b")];
 const u = dedupe(raw); assert.equal(u.length, raw.length / 2);
-const ranked = rank(u.map(heuristic));
+const ranked = rank(fixTinyPrices(u.map(heuristic)));
+assert.equal(ranked.find(r => /iphone/i.test(r.title) && r.listedPrice).price, 13000, "the mock iPhone listed as 13 is repaired before ranking");
 assert.equal(ranked.filter(r => r.intent !== "wanted")[0].price, 1100, "cheapest keyboard should rank first");
-assert.ok(ranked.every(r => !/tarlac/i.test(r.locationText)), "out-of-radius item must be dropped");
+const tar = ranked.find(r => /tarlac/i.test(r.locationText)); assert.ok(tar && tar.distanceKm > 25 && tar.zone === "nearby", "listings past the old 25 km cutoff are kept and labeled");
 console.log("all tests passed");
 
 // Fallback chain: first provider fails with 429, second answers.
@@ -129,7 +130,7 @@ assert.equal(P.sellerScore(null), null); assert.equal(P.sellerScore({ rating: 5,
 assert.equal(P.dedupe([{ url: "https://a/1", kind: "post" }, { url: "https://a/2", price: 0 }, { url: "https://a/3", price: 5 }]).length, 2, "posts may lack a price, listings may not");
 assert.equal(A.textPrice("selling, price ₱1,800 only"), 1800); assert.equal(A.textPrice("php 2.5k"), 2500); assert.equal(A.textPrice("no price here"), null);
 const nm = A.norm({ intent: "sell", name: "Switch OLED", category: "Gaming", price: 10500, specs: ["64GB", "call 09171234567"], issues: ["scratch on screen"], issue_level: 1, summary: "Switch OLED, light use. Text 09171234567" }, { title: "Switch", price: 10000 });
-assert.equal(nm.name, "switch oled"); assert.equal(nm.price, 10500); assert.deepEqual(nm.specs, ["64GB", "call"]); assert.ok(!/0917/.test(nm.summary)); assert.equal(nm.issueLevel, 1);
+assert.equal(nm.name, "switch oled"); assert.equal(nm.price, 10000, "listing price beats the AI price"); assert.deepEqual(nm.specs, ["64GB", "call"]); assert.ok(!/0917/.test(nm.summary)); assert.equal(nm.issueLevel, 1);
 const hw = A.heuristic({ title: "WTB RTX 3060", description: "looking for rtx 3060, budget php 12k" }); assert.equal(hw.intent, "wanted"); assert.equal(hw.price, 12000); assert.equal(hw.name, "rtx 3060");
 // matching: supply <-> wanted, real sold price beats asking comps, issues cut the price, offer stays below ask
 const sup = (n, price, extra = {}) => ({ url: "https://s/" + n + price, hash: "h" + price, title: n, name: n, price, intent: "sell", demand: 60, comments: 0, ...extra });
@@ -145,8 +146,8 @@ const dmg = rank([sup("rtx 3060", 9000, { issueLevel: 2 }), sup("rtx 3060", 9500
 assert.ok(dmg.find(r => r.price === 9000).net < noBuyer.net - 1500, "major issue cuts the expected resale");
 assert.equal(P.soldMedianByName([1, 2, 3].map(i => ({ name: "x", price: 100 * i, removed_at: "2026-01-01" }))).x, 200);
 // details selection, catalog rotation, group + fb + carousell mapping
-const pool = [10, 100, 100, 100, 100].map((p, i) => ({ source: "carousell_apify", q: "k", kind: "listing", price: p, url: "u" + i }));
-assert.deepEqual(P.pickForDetails(pool, 3, ["carousell_apify"]).map(x => x.price), [10]); assert.equal(P.pickForDetails(pool, 3, ["facebook_marketplace"]).length, 0);
+const pool = [1000, 10000, 10000, 10000, 10000].map((p, i) => ({ source: "carousell_apify", q: "k", kind: "listing", price: p, url: "u" + i }));
+assert.deepEqual(P.pickForDetails(pool, 3, ["carousell_apify"]).map(x => x.price), [1000]); assert.equal(P.pickForDetails(pool, 3, ["facebook_marketplace"]).length, 0);
 const ql = Cat.buildQueryList(["Phones", "Gaming"]); assert.ok(ql.length >= 30 && ql[0] === "iphone 11" && ql[1] === "nintendo switch");
 const s1 = Cat.pickSlice(ql, 0, 6), s2 = Cat.pickSlice(ql, s1.next, 6); assert.equal(s1.queries.length, 6); assert.equal(s2.queries[0], ql[6]);
 assert.equal(Cat.pickSlice(ql, ql.length - 2, 4).queries[2], ql[0], "rotation wraps"); assert.ok(Cat.ALL_CATEGORIES.length >= 12);
@@ -168,3 +169,80 @@ assert.ok(!JSON.stringify(cap.listings).includes("Secret Seller") && !JSON.strin
 assert.ok(!cap.listings[0].title.includes("0917")); assert.deepEqual(cap.listings[0].images, ["https://i/1.jpg"]);
 assert.equal(cap.listing_private[0].seller_name, "Secret Seller"); assert.ok(cap.listing_private[0].seller_score > 0); assert.equal(cap.price_history[0].price, 1500);
 console.log("v4 backend tests passed");
+
+// ===== v5: price repair, fees, zones, photo check, group finder, known listings =====
+{
+const V = await import("./vision.js"), Dsc = await import("./discover.js"), Core = await import("./sources/apifyCore.js");
+assert.equal(Core.toPrice("13k"), 13000); assert.equal(Core.toPrice("1.2k"), 1200); assert.equal(Core.toPrice("PHP 1,200"), 1200); assert.equal(Core.toPrice(13), 13);
+const tp = (name, price, extra = {}) => ({ name, price, intent: "sell", category: "Phones", ...extra });
+let fx = P.fixTinyPrices([tp("iphone 11", 13, { resale: 11000 }), tp("iphone 11", 9500), tp("iphone 11", 10500)]);
+assert.equal(fx[0].price, 13000); assert.match(fx[0].priceNote, /Listed as 13, treated as ₱13,000/); assert.equal(fx[0].listedPrice, 13);
+fx = P.fixTinyPrices([tp("iphone 11", 13), tp("iphone 11", 9500), tp("iphone 11", 10500)]); assert.equal(fx[0].price, 13000, "similar listings are enough evidence");
+fx = P.fixTinyPrices([tp("phone case", 99, { resale: 150 })]); assert.equal(fx[0].price, 99, "a cheap accessory is left alone");
+fx = P.fixTinyPrices([tp("rtx 3060", 13)]); assert.equal(fx[0].price, 13, "no evidence, no change");
+fx = P.fixTinyPrices([tp("charger", 90, { resale: 1000 })]); assert.equal(fx[0].price, 90, "90,000 is far above a 1,000 estimate, so it is left alone");
+fx = P.fixTinyPrices([tp("macbook", 5, { resale: 3000 })]); assert.equal(fx[0].price, 5000, "5,000 is plausible next to a 3,000 estimate");
+
+fx = P.fixTinyPrices([tp("iphone 11", 13.5, { resale: 14000 })]); assert.equal(fx[0].price, 13500);
+fx = P.fixTinyPrices([{ name: "switch oled", price: 14, intent: "wanted", resale: 12000 }]); assert.equal(fx[0].price, 14000, "wanted budgets are repaired too");
+assert.equal(P.pickForDetails([{ source: "s", q: "a", kind: "listing", price: 100, url: "1" }, { source: "s", q: "a", kind: "listing", price: 200, url: "2" }], 5, ["s"], 1).length, 2, "details for every new listing, even in small searches");
+// fees are configurable and the math follows them
+const fb = [sup("rtx 3060", 9000), sup("rtx 3060", 11000), sup("rtx 3060", 12000), sup("rtx 3060", 12500)];
+const lowFee = rank(fb, 25, { fees: { haggle: 1, fee: 0 } }).find(r => r.price === 9000), highFee = rank(fb, 25, { fees: { haggle: 10, fee: 5 } }).find(r => r.price === 9000);
+assert.ok(lowFee.net > highFee.net + 1000, "higher fees reduce profit: " + lowFee.net + " vs " + highFee.net);
+// far listings are kept, labeled by zone, and the zone limits come from settings
+const zs = rank([sup("x thing", 1000, { distanceKm: null, lat: 14.6, lng: 120.98, geoPrecision: "town" }), sup("x thing", 1100, { lat: 15.2, lng: 120.66 })], 25, { near: 15, far: 50 });
+assert.equal(zs.find(r => r.price === 1000).zone, "far"); assert.equal(zs.find(r => r.price === 1100).zone, "near");
+assert.equal(rank([sup("x thing", 1000, { lat: 14.6, lng: 120.98 })], 25, { near: 15, far: 200 })[0].zone, "nearby", "zone limits are configurable");
+// buyers carry their id so the dashboard can show who is asking
+assert.ok(cheap.matches[0].hash === "w1", "buyer entries include the post id");
+// known listings are restored instead of re-analysed
+const rs = P.restore({ url: "u", price: 9000, title: "t", hash: "h" }, { name: "rtx 3060", category: "Desktops & Parts", specs: ["12GB"], issues: ["scratch"], issue_level: 1, ai_demand: 80, ai_resale: 11000, has_details: true, vision_done: true, geo_precision: "town", place: "Angeles", lat: 15.1, lng: 120.5, price: 9000 });
+assert.ok(rs.enriched && rs.detailed && rs.visionDone && rs.demand === 80 && rs.aiResale === 11000 && rs.geoPrecision === "town" && rs.lat === 15.1);
+assert.equal(P.restore({ url: "u", price: 9000 }, { name: "x", geo_precision: "none" }).geoPrecision, undefined, "unlocated listings are retried");
+// photo check: images downloaded, sent to the vision model, result merged and cleaned
+process.env.GEMINI_API_KEY = "g"; const reqs = [];
+globalThis.fetch = async (url, o) => { reqs.push([url, o]);
+  if (String(url).startsWith("https://img.test/")) return { ok: true, headers: { get: () => "image/jpeg" }, arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer };
+  return { ok: true, json: async () => ({ choices: [{ message: { content: 'sure {"condition":"good","severity":1,"defects":["scratch on screen","call 09171234567"],"inclusions":["box","charger"],"case_note":"tempered glass and case","matches_description":false,"notes":"Screen has a scratch."}' } }] }) }; };
+const vr = await V.inspect({ title: "iPhone", description: "mint", imageUrl: "https://img.test/1.jpg", images: ["https://img.test/2.jpg", "http://insecure/3.jpg"] });
+const body = JSON.parse(reqs.find(r => String(r[0]).includes("generativelanguage"))[1].body); const parts = body.messages[1].content;
+assert.equal(parts.filter(p => p.type === "image_url").length, 2, "https photos only, as data"); assert.ok(parts[1].image_url.url.startsWith("data:image/jpeg;base64,"));
+assert.deepEqual(vr.defects, ["scratch on screen", "call"]); assert.equal(vr.matches, false); assert.equal(vr.caseNote, "tempered glass and case");
+const mg = V.mergeVision({ issues: ["battery 82%"], issueLevel: 0, conditionTxt: "unknown" }, vr); assert.deepEqual(mg.issues, ["battery 82%", "scratch on screen", "call"]); assert.equal(mg.issueLevel, 1); assert.equal(mg.mismatch, true); assert.equal(mg.conditionTxt, "good"); assert.equal(mg.visionDone, true);
+assert.equal(await V.inspect({ title: "x", imageUrl: "http://insecure/1.jpg" }), null, "no usable photo, no call");
+globalThis.fetch = async () => ({ ok: false, status: 500 }); assert.equal(await V.inspect({ title: "x", imageUrl: "https://img.test/1.jpg" }), null, "failures fall back quietly");
+globalThis.fetch = realFetch; delete process.env.GEMINI_API_KEY;
+assert.equal(V.visionProviders().length, 0); process.env.GROQ_API_KEY = "k"; assert.equal(V.visionProviders().length, 0, "groq needs a named vision model"); process.env.GROQ_VISION_MODEL = "m"; assert.equal(V.visionProviders().length, 1); delete process.env.GROQ_API_KEY; delete process.env.GROQ_VISION_MODEL;
+// group finder
+const gu = Dsc.groupUrls([{ organicResults: [{ url: "https://www.facebook.com/groups/PampangaBuySell/?ref=x" }, { url: "https://www.facebook.com/groups/feed/" }, { url: "https://example.com/x" }] }, { url: "https://m.facebook.com/groups/GadgetsPH/posts/1" }]);
+assert.deepEqual(gu, ["https://www.facebook.com/groups/PampangaBuySell", "https://www.facebook.com/groups/GadgetsPH"]);
+assert.ok(Dsc.discoveryQueries(["Magalang", "Angeles", "Arayat"]).length <= 6 && Dsc.discoveryQueries(["Magalang"])[0].includes("site:facebook.com/groups"));
+const gp = (t, d = "") => ({ title: t, description: d });
+const good = Dsc.scoreGroup([1, 2, 3, 4, 5, 6].map(i => gp("Selling PS5 ₱" + i + "000", "Angeles City meetup")), { lat: 15.2147, lng: 120.6586 }); assert.ok(good.score >= 0.45 && good.sellRatio === 1 && good.localRatio === 1, JSON.stringify(good));
+const bad = Dsc.scoreGroup([1, 2, 3, 4, 5, 6].map(i => gp("Good morning everyone " + i, "pray for us")), { lat: 15.2147, lng: 120.6586 }); assert.ok(bad.score < 0.45);
+assert.equal(Dsc.scoreGroup([], {}).score, 0);
+process.env.APIFY_TOKEN = "t"; globalThis.fetch = async (u, o) => ({ ok: true, json: async () => String(u).includes("google") ? [{ organicResults: [{ url: "https://www.facebook.com/groups/x1" }] }] : [1, 2, 3, 4, 5].map(i => ({ url: "https://www.facebook.com/groups/x1/posts/" + i, text: "Selling gadget number " + i + " price ₱" + i + "000 Angeles", time: "2026-11-01T01:00:00Z" })) });
+assert.deepEqual(await Dsc.discover({ lat: 15.2, lng: 120.6 }), ["https://www.facebook.com/groups/x1"]);
+const ev = await Dsc.evaluate("https://www.facebook.com/groups/x1", { lat: 15.2147, lng: 120.6586 }); assert.equal(ev.status, "active"); assert.equal(ev.postsSeen, 5);
+globalThis.fetch = async () => ({ ok: true, json: async () => [] }); assert.deepEqual((await Dsc.evaluate("https://www.facebook.com/groups/empty", {})).status, "rejected"); globalThis.fetch = realFetch;
+// save(): new fields reach the right tables, coordinates are rounded in public and exact in private
+const cap5 = { listings: [], listing_private: [], price_history: [] };
+const fsb5 = { from: t => ({ select: () => ({ in: async () => ({ data: [], error: null }) }), upsert: async r => { cap5[t].push(...r); return { error: null }; }, insert: async r => { cap5[t].push(...r); return { error: null }; } }) };
+await save(fsb5, [{ hash: "k1", source: "s", url: "https://x/9", title: "RTX", price: 13000, priceNote: "Listed as 13, treated as ₱13,000", listedPrice: 13, name: "rtx", intent: "sell", lat: 15.123456, lng: 120.654321, place: "Angeles", geoPrecision: "exact", model: "3060", year: 2022, receipt: true, delivery: "meetup",
+  attributes: [{ name: "Storage", value: "12GB" }], defects: ["scratch"], inclusions: ["box"], caseNote: "case", photoNotes: "ok", mismatch: false, detailed: true, visionDone: true, aiDemand: 80, aiResale: 11000, seller: { name: "Sam" }, description: "desc" }]);
+const L5 = cap5.listings[0]; assert.equal(L5.lat, 15.12); assert.equal(L5.lng, 120.65); assert.equal(L5.place, "Angeles"); assert.equal(L5.price_note, "Listed as 13, treated as ₱13,000"); assert.equal(L5.listed_price, 13);
+assert.deepEqual(L5.extra, { Storage: "12GB" }); assert.equal(L5.has_details, true); assert.equal(L5.vision_done, true); assert.equal(L5.ai_resale, 11000); assert.equal(L5.has_receipt, true); assert.ok(!JSON.stringify(L5).includes("Sam") && !JSON.stringify(L5).includes("desc"));
+assert.equal(cap5.listing_private[0].lat, 15.123456, "exact coordinates stay in the private table"); assert.equal(cap5.listing_private[0].seller_name, "Sam");
+// known listings load with their private coordinates
+const { loadKnown } = await import("./db.js");
+const ksb = { from: t => { const q = { select: () => q, in: () => q, not: () => q, then: res => res({ data: t === "listings" ? [{ hash: "k1", name: "rtx", has_details: true }] : [{ hash: "k1", lat: 15.1, lng: 120.5 }], error: null }) }; return q; } };
+const kn = await loadKnown(ksb, ["k1"]); assert.equal(kn.get("k1").lat, 15.1); assert.equal(kn.get("k1").has_details, true);
+// a repaired price stays repaired when the scrape still says 13, so there is no false 99% price-drop alert
+const rp = P.restore({ url: "u", price: 13 }, { name: "iphone 11", price: 13000, listed_price: 13, price_note: "Listed as 13, treated as ₱13,000" });
+assert.equal(rp.price, 13000); assert.equal(rp.listedPrice, 13); assert.match(rp.priceNote, /treated as/);
+assert.equal(P.restore({ url: "u", price: 9500 }, { name: "iphone 11", price: 13000, listed_price: 13 }).price, 9500, "a genuinely new price is respected");
+console.log("v5 backend tests passed");
+}
+
+await import("./geo.test.js");
