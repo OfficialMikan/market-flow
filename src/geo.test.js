@@ -1,0 +1,25 @@
+import assert from "node:assert/strict";
+import { matchPlace, regionHint, zoneFor, locateAll, homeRegion } from "./geo.js";
+import { haversine } from "./pipeline.js";
+const home = { lat: 15.2147, lng: 120.6586 };
+const sf = matchPlace("San Fernando, PH-03 San Fernando PH-03", home);
+assert.equal(sf.r, "03"); assert.ok(Math.abs(sf.la - 15.03) < 0.1, "Pampanga's San Fernando, not Cebu or La Union");
+assert.equal(matchPlace("San Fernando, PH-07", home).r, "07"); assert.equal(matchPlace("San Fernando", home).precision, "guess");
+assert.equal(matchPlace("Quezon City, NCR Quezon City NCR", home).r, "NCR");
+assert.equal(matchPlace("Angeles City, PH-03", home).d, "Angeles City"); assert.equal(matchPlace("Angeles City, PH-03", home).precision, "town");
+assert.equal(matchPlace("Concepcion, PH-03", home).r, "03"); assert.equal(matchPlace("Hermosa, PH-03", home)?.r ?? "03", "03");
+assert.equal(matchPlace("Guagua, PH-03", home).precision, "guess", "hand-added approximate towns are marked approximate");
+assert.equal(matchPlace("nowhereville xyz", home), null); assert.equal(matchPlace("meet at SM Clark, Angeles", home).d, "Angeles City");
+assert.equal(regionHint("x PH-40 y"), "40"); assert.equal(regionHint("Manila NCR"), "NCR"); assert.equal(regionHint("nothing"), null);
+assert.equal(homeRegion(home), "03"); assert.deepEqual([0, 10, 15, 16, 50, 51, null].map(k => zoneFor(k)), ["near", "near", "near", "nearby", "nearby", "far", "unknown"]);
+const mnl = matchPlace("Manila, NCR", home); const km = haversine(home.lat, home.lng, mnl.la, mnl.lo); assert.ok(km > 70 && km < 110, "Manila is far: " + km);
+// locateAll: exact coordinates win, gazetteer next, geocoder last (stubbed, cached, capped)
+const calls = []; const realFetch = globalThis.fetch;
+globalThis.fetch = async u => { calls.push(u); return { ok: true, json: async () => [{ lat: "15.1789", lon: "120.5435", display_name: "SM City Clark, Angeles, Pampanga" }] }; };
+const L = [{ lat: 15.1, lng: 120.6, locationText: "Angeles City, PH-03" }, { locationText: "Mabalacat, PH-03" }, { locationText: "Zzyzx Mall Annex" }, { locationText: "Zzyzx Mall Annex" }, { locationText: "" }];
+const fresh = await locateAll(L, { home, delay: 0, cap: 5 });
+assert.equal(L[0].geoPrecision, "exact"); assert.equal(L[0].place, "Angeles"); assert.equal(L[1].geoPrecision, "town"); assert.equal(L[1].place, "Mabalacat");
+assert.equal(L[2].geoPrecision, "geocoded"); assert.equal(L[3].geoPrecision, "geocoded"); assert.equal(calls.length, 1, "the second identical place comes from the cache"); assert.equal(fresh.length, 1);
+assert.equal(L[4].geoPrecision, "none"); assert.equal(matchPlace("SM City Clark", home).d, "Clark Freeport"); assert.equal(matchPlace("SM City Clark", home).precision, "guess");
+const capped = [{ locationText: "Place Alpha" }, { locationText: "Place Beta" }]; calls.length = 0; await locateAll(capped, { home, delay: 0, cap: 1 }); assert.equal(calls.length, 1, "geocoder cap respected");
+globalThis.fetch = realFetch; console.log("geo tests passed");

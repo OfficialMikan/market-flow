@@ -2,6 +2,8 @@ name: scan
 on:
   schedule: [{ cron: "0 */6 * * *" }]
   workflow_dispatch:
+permissions:
+  contents: read
 concurrency: { group: scan, cancel-in-progress: false }
 jobs:
   scan:
@@ -37,6 +39,20 @@ jobs:
           DETAIL_TOP_N: ${{ vars.DETAIL_TOP_N || secrets.DETAIL_TOP_N }}
           TRAVEL_PESO_PER_KM: ${{ vars.TRAVEL_PESO_PER_KM || secrets.TRAVEL_PESO_PER_KM }}
           CATEGORIES: ${{ vars.CATEGORIES || secrets.CATEGORIES }}
+          NEAR_KM: ${{ vars.NEAR_KM || secrets.NEAR_KM }}
+          FAR_KM: ${{ vars.FAR_KM || secrets.FAR_KM }}
+          HAGGLE_PCT: ${{ vars.HAGGLE_PCT || secrets.HAGGLE_PCT }}
+          FEE_PCT: ${{ vars.FEE_PCT || secrets.FEE_PCT }}
+          DETAIL_MAX: ${{ vars.DETAIL_MAX || secrets.DETAIL_MAX }}
+          VISION_TOP_N: ${{ vars.VISION_TOP_N || secrets.VISION_TOP_N }}
+          GEOCODE_CAP: ${{ vars.GEOCODE_CAP || secrets.GEOCODE_CAP }}
+          DISCOVER_DAYS: ${{ vars.DISCOVER_DAYS || secrets.DISCOVER_DAYS }}
+          DISCOVER_EVAL: ${{ vars.DISCOVER_EVAL || secrets.DISCOVER_EVAL }}
+          MAX_GROUPS: ${{ vars.MAX_GROUPS || secrets.MAX_GROUPS }}
+          DISCOVER_ACTOR: ${{ vars.DISCOVER_ACTOR || secrets.DISCOVER_ACTOR }}
+          GROQ_VISION_MODEL: ${{ vars.GROQ_VISION_MODEL || secrets.GROQ_VISION_MODEL }}
+          OPENROUTER_VISION_MODEL: ${{ vars.OPENROUTER_VISION_MODEL || secrets.OPENROUTER_VISION_MODEL }}
+          GEMINI_MODEL: ${{ vars.GEMINI_MODEL || secrets.GEMINI_MODEL }}
           FB_LOCATION: ${{ vars.FB_LOCATION || secrets.FB_LOCATION }}
           FB_RADIUS_KM: ${{ vars.FB_RADIUS_KM || secrets.FB_RADIUS_KM }}
           FB_MAX_ITEMS: ${{ vars.FB_MAX_ITEMS || secrets.FB_MAX_ITEMS }}

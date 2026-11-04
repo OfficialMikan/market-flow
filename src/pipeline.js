@@ -4,6 +4,7 @@ export const FEE = 0.08; // haggling + fees: you realistically keep ~92% of the 
 const travelRate = () => +(process.env.TRAVEL_PESO_PER_KM || 10); // pesos per km, both ways
 const VARIANTS = new Set(["ti", "super", "pro", "max", "plus", "xt", "xtx", "oled", "lite", "mini", "ultra", "slim", "air", "se", "x3d"]);
 
+export const zoneFor = (km, near = 15, far = 50) => km == null ? "unknown" : km <= near ? "near" : km <= far ? "nearby" : "far";
 export const hash = u => createHash("sha1").update(String(u).split("?")[0]).digest("hex");
 export function haversine(a, b, c, d) {
   const R = 6371, r = x => x * Math.PI / 180;
@@ -56,12 +57,12 @@ export function findBuyers(l, wanted) {
   for (const w of wanted) {
     if (w.url === l.url || !sameProduct(l.name, w.name)) continue;
     if (w.budget != null && !(w.budget > l.price * 1.05)) continue;
-    out.push({ url: w.url, budget: w.budget, area: w.area || "", at: w.at || null });
+    out.push({ hash: w.hash, url: w.url, budget: w.budget, area: w.area || "", at: w.at || null });
   }
   return out.sort((a, b) => (b.budget ?? -1) - (a.budget ?? -1)).slice(0, 3);
 }
 // What you would net by buying this and selling it on. Confidence: A buyer found, B sold comps, C asking comps, D AI guess.
-export function opportunity(l, { askMedian, soldMedian, buyers }, dist) {
+export function opportunity(l, { askMedian, soldMedian, buyers }, dist, fee = FEE) {
   const budgets = (buyers || []).map(b => b.budget).filter(x => x > 0);
   const comp = soldMedian != null ? soldMedian : askMedian != null ? askMedian * 0.95 : null;
   let sell = null, basis = null, conf = null;
@@ -72,53 +73,52 @@ export function opportunity(l, { askMedian, soldMedian, buyers }, dist) {
   if (sell == null) return {};
   sell *= 1 - [0, 0.08, 0.25][l.issueLevel || 0];
   const travel = dist == null ? 0 : dist * 2 * travelRate();
-  const net = sell * (1 - FEE) - l.price - travel;
+  const net = sell * (1 - fee) - l.price - travel;
   return { sellPrice: Math.round(sell), sellBasis: basis, confidence: conf, net: Math.round(net), roi: Math.round(net / l.price * 100), travel: Math.round(travel) };
 }
 export function rank(list, radius = CONFIG.radiusKm, market = {}) {
   const speed = market.speed || {}, sold = market.soldPrice || {};
+  const fee = market.fees ? (market.fees.haggle + market.fees.fee) / 100 : FEE, near = market.near ?? 15, far = market.far ?? 50;
   const sells = list.filter(l => l.intent !== "wanted"), wants = list.filter(l => l.intent === "wanted");
   const groups = {};
   for (const l of sells) (groups[l.name] ??= []).push(l.price);
   const pool = new Map();
-  for (const r of market.wanted || []) pool.set(r.url, { url: r.url, name: r.name, budget: r.price == null ? null : +r.price, area: r.area || "", at: r.posted_at || r.first_seen || null });
-  for (const l of wants) pool.set(l.url, { url: l.url, name: l.name, budget: l.price > 0 ? l.price : null, area: l.area || "", at: l.postedAt || null });
+  for (const r of market.wanted || []) pool.set(r.url, { hash: r.hash, url: r.url, name: r.name, budget: r.price == null ? null : +r.price, area: r.area || "", at: r.posted_at || r.first_seen || null });
+  for (const l of wants) pool.set(l.url, { hash: l.hash, url: l.url, name: l.name, budget: l.price > 0 ? l.price : null, area: l.area || "", at: l.postedAt || null });
   const wantedPool = [...pool.values()], out = [];
   for (const l of sells) {
     if (l.flag) continue;
     const dist = distanceFor(l);
-    if (dist != null && dist > radius) continue;
     const g = groups[l.name], buyers = findBuyers(l, wantedPool), days = speed[l.name];
     const sp = days == null ? null : Math.max(0, Math.min(100, 100 - (days - 1) / 29 * 100)); // 1 day = 100, 30+ days = 0
     const engage = Math.min(100, (l.comments || 0) * 5 + (l.likes || 0) * 4), base = l.demand ?? 50;
     const demand = Math.min(100, Math.round((sp == null ? 0.65 * base + 0.35 * engage : 0.4 * base + 0.2 * engage + 0.4 * sp) + Math.min(10, buyers.length * 5)));
     const askMedian = g.length >= 3 ? median(g) : null, soldMedian = sold[l.name] ?? null;
-    const op = opportunity(l, { askMedian, soldMedian, buyers }, dist);
+    const op = opportunity(l, { askMedian, soldMedian, buyers }, dist, fee);
     const comp = soldMedian != null ? soldMedian : askMedian != null ? askMedian * 0.95 : null; // market price ceiling a buyer will really pay
     const roi = op.roi ?? 0, net = op.net ?? null;
     const prox = dist == null ? 40 : Math.max(0, 100 - dist / radius * 100);
     const cw = { A: 1, B: 0.85, C: 0.65, D: 0.4 }[op.confidence] ?? 0.4;
     const raw = 0.35 * Math.min(100, Math.max(0, roi * 2)) + 0.25 * (net == null ? 0 : Math.min(100, Math.max(0, net / 15))) + 0.25 * demand + 0.15 * prox;
     let offer = Math.round(l.price * 0.9 / 50) * 50; // opening offer: 90%, or the price that still leaves 25% return
-    if (op.sellPrice) offer = Math.max(Math.round(Math.min(l.price * 0.9, (op.sellPrice * (1 - FEE) - (op.travel || 0)) / 1.25) / 50) * 50, Math.round(l.price * 0.6 / 50) * 50);
+    if (op.sellPrice) offer = Math.max(Math.round(Math.min(l.price * 0.9, (op.sellPrice * (1 - fee) - (op.travel || 0)) / 1.25) / 50) * 50, Math.round(l.price * 0.6 / 50) * 50);
     if (!(offer > 0)) offer = l.price;
     out.push({ ...l, resale: op.sellPrice ?? null, sellPrice: op.sellPrice ?? null, sellBasis: op.sellBasis ?? null, confidence: op.confidence ?? null,
       net, travel: op.travel ?? 0, _cap: comp == null ? null : comp * 1.05, marginPct: roi, demand, sellDays: days ?? null, offerPrice: Math.min(offer, l.price), matches: buyers,
-      distanceKm: dist == null ? null : Math.round(dist * 10) / 10, score: Math.round(raw * (0.5 + 0.5 * cw)) });
+      distanceKm: dist == null ? null : Math.round(dist * 10) / 10, zone: zoneFor(dist, near, far), score: Math.round(raw * (0.5 + 0.5 * cw)) });
   }
   const supply = new Map();
   for (const r of market.supply || []) supply.set(r.url, { hash: r.hash, url: r.url, title: r.title, name: r.name, price: +r.price, dist: r.distance_km == null ? null : +r.distance_km, cap: sold[r.name] != null ? sold[r.name] * 1.05 : null });
   for (const s of out) supply.set(s.url, { hash: s.hash, url: s.url, title: s.title, name: s.name, price: s.price, dist: s.distanceKm, cap: s._cap ?? null });
   for (const l of wants) { // buyers asking: which seller could fill this request, and what you would net
     const dist = distanceFor(l);
-    if (dist != null && dist > radius) continue;
     const budget = l.price > 0 ? l.price : null;
     const matches = [...supply.values()].filter(s => sameProduct(s.name, l.name) && (budget == null || budget > s.price * 1.05))
-      .map(s => ({ hash: s.hash, url: s.url, title: s.title, price: s.price, net: budget == null ? null : Math.round((s.cap != null ? Math.min(budget, s.cap) : budget) * (1 - FEE) - s.price - (s.dist == null ? 0 : s.dist * 2 * travelRate())) }))
+      .map(s => ({ hash: s.hash, url: s.url, title: s.title, price: s.price, net: budget == null ? null : Math.round((s.cap != null ? Math.min(budget, s.cap) : budget) * (1 - fee) - s.price - (s.dist == null ? 0 : s.dist * 2 * travelRate())) }))
       .filter(m => m.net == null || m.net > 0).sort((a, b) => (b.net ?? -1e9) - (a.net ?? -1e9) || a.price - b.price).slice(0, 3);
     const bestNet = matches.find(m => m.net != null)?.net ?? null, demand = Math.min(100, Math.round(l.demand ?? 60));
     out.push({ ...l, price: budget, resale: null, sellPrice: budget, sellBasis: "buyer", confidence: matches.length ? "A" : null, net: bestNet, marginPct: 0,
-      demand, sellDays: null, matches, distanceKm: dist == null ? null : Math.round(dist * 10) / 10,
+      demand, sellDays: null, matches, distanceKm: dist == null ? null : Math.round(dist * 10) / 10, zone: zoneFor(dist, near, far),
       score: Math.round(0.5 * demand + 0.5 * Math.min(100, Math.max(0, bestNet ?? 0) / 10)) });
   }
   return out.sort((a, b) => b.score - a.score);
@@ -146,14 +146,44 @@ export function findGone(candidates, seen) {
   return gone;
 }
 // Which listings deserve a paid detail fetch: the ones priced well below their search's median.
-export function pickForDetails(list, n, sources) {
+export function pickForDetails(list, n, sources, maxRatio = 0.9) {  // maxRatio 1 = every new listing, best price first
   const g = {};
   for (const l of list) if (l.kind !== "post" && sources.includes(l.source)) (g[`${l.source}|${l.q}`] ??= []).push(l);
   const c = [];
   for (const arr of Object.values(g)) {
-    if (arr.length < 3) continue;
-    const m = median(arr.map(x => x.price));
-    for (const l of arr) if (l.price / m <= 0.9) c.push({ l, ratio: l.price / m });
+    const m = arr.length >= 3 ? median(arr.map(x => x.price)) : null;
+    for (const l of arr) { const ratio = m && l.price >= 100 ? l.price / m : 1; if (ratio <= maxRatio) c.push({ l, ratio }); }
   }
   return c.sort((a, b) => a.ratio - b.ratio).slice(0, n).map(x => x.l);
+}
+// "13" on a phone listing means 13k. Only repaired when the AI resale estimate or similar listings make 13,000 plausible.
+export function fixTinyPrices(list) {
+  const g = {};
+  for (const l of list) if (l.intent !== "wanted" && l.price >= 100) (g[l.name] ??= []).push(l.price);
+  for (const l of list) {
+    if (!(l.price > 0 && l.price < 100)) continue;
+    const ref = l.resale > 0 ? l.resale : (g[l.name]?.length >= 2 ? median(g[l.name]) : null);
+    if (!(ref >= 1000)) continue;
+    const p = Math.round(l.price * 1000);
+    if (p >= ref * 0.3 && p <= ref * 3) { l.listedPrice = l.price; l.price = p; l.priceNote = `Listed as ${l.listedPrice}, treated as ₱${p.toLocaleString("en-PH")}`; }
+  }
+  return list;
+}
+// Source-specific attributes (storage, battery health, brand...) as a small clean object.
+export function cleanExtra(a) {
+  const out = {};
+  const put = (k, v) => { k = redact(k).slice(0, 30); v = redact(typeof v === "object" ? JSON.stringify(v) : v).slice(0, 80); if (k && v && Object.keys(out).length < 14) out[k] = v; };
+  if (Array.isArray(a)) for (const x of a) { if (x && typeof x === "object") put(x.name || x.label || x.key || "", x.value ?? x.text ?? ""); }
+  else if (a && typeof a === "object") for (const [k, v] of Object.entries(a)) put(k, v);
+  return out;
+}
+// Rebuild the analysis of a listing that is already in the database, so it is not analysed (and paid for) twice.
+export function restore(l, k) {
+  return { ...l, enriched: true, name: k.name, brand: k.brand || "", category: k.category || "Other", intent: k.intent || "sell", specs: k.specs || [], conditionTxt: k.condition || "unknown",
+    issues: k.issues || [], issueLevel: k.issue_level || 0, summary: k.summary || "", model: k.model || "", color: k.color || "", year: k.year ?? null, quantity: k.quantity || 1,
+    warranty: k.warranty || "", receipt: !!k.has_receipt, reason: k.reason || "", delivery: k.delivery || "unknown", defects: k.defects || [], inclusions: k.inclusions || [],
+    caseNote: k.case_note || "", visionDone: !!k.vision_done, photoNotes: k.photo_notes || "", mismatch: !!k.mismatch, detailed: !!k.has_details, demand: k.ai_demand ?? 50, aiDemand: k.ai_demand ?? 50, resale: k.ai_resale ?? null, aiResale: k.ai_resale ?? null,
+    area: k.area || "", place: k.place || "", region: k.region || null, lat: k.lat ?? l.lat, lng: k.lng ?? l.lng, geoPrecision: k.geo_precision && k.geo_precision !== "none" ? k.geo_precision : undefined,
+    multi: false, flag: null, price: l.price ?? (k.price == null ? null : +k.price),
+    ...(k.listed_price != null && +k.listed_price === l.price && k.price > 0 ? { price: +k.price, listedPrice: +k.listed_price, priceNote: k.price_note || null } : {}) };
 }

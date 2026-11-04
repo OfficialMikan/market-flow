@@ -22,6 +22,8 @@ export async function runActor(actor, input, opts = {}) {
 
 export const toPrice = v => {
   if (typeof v === "number") return v;
+  const k = /(\d+(?:\.\d+)?)\s*k\b/i.exec(String(v ?? "").replace(/,/g, ""));   // 13k and 1.2k
+  if (k) return +k[1] * 1000;
   const m = String(v ?? "").replace(/,/g, "").match(/\d+(?:\.\d+)?/);
   return m ? +m[0] : NaN;
 };

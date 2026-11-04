@@ -2,12 +2,14 @@
 <html lang="en"><head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; font-src https://fonts.gstatic.com; img-src 'self' https: data:; connect-src 'self' https://*.supabase.co https://api.github.com; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'">
 <title>Market Flow</title>
 <link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#0f1b2d"><link rel="apple-touch-icon" href="icon-192.png">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" integrity="sha384-sHL9NAb7lN7rfvG5lfHpm643Xkcjzp4jFvuavGOndn6pjVqS6ny56CAt3nsEVT4H" crossorigin="anonymous">
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;800&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#edf0f5;--s:#fff;--ink:#0f1b2d;--mu:#566782;--ln:#d6dde8;--ac:#2540d9;--acs:#e4e9ff;--gn:#0b8a5f;--gns:#dcf4ea;--ls:#c4351f;--lss:#fde7e3;--tg:#ffd43b;--tgi:#2a2100;--ws:#fff3d6;--wi:#8a5a00;--sh:rgba(15,27,45,.45);color-scheme:light}
-@media (prefers-color-scheme:dark){:root{--bg:#0b1120;--s:#131b2e;--ink:#e8edf7;--mu:#93a1ba;--ln:#243049;--ac:#8fa4ff;--acs:#1c2850;--gn:#4ade9a;--gns:#12342a;--ls:#ff8a75;--lss:#3b1b16;--ws:#3a2c0a;--wi:#ffd98a;--sh:rgba(0,0,0,.6);color-scheme:dark}}
+:root{--bg:#edf0f5;--s:#fff;--ink:#0f1b2d;--mu:#566782;--ln:#d6dde8;--ac:#2540d9;--acs:#e4e9ff;--gn:#07704c;--bd:#76849b;--gns:#dcf4ea;--ls:#c4351f;--lss:#fde7e3;--tg:#ffd43b;--tgi:#2a2100;--ws:#fff3d6;--wi:#8a5a00;--sh:rgba(15,27,45,.45);color-scheme:light}
+@media (prefers-color-scheme:dark){:root{--bg:#0b1120;--s:#131b2e;--ink:#e8edf7;--mu:#93a1ba;--ln:#243049;--ac:#8fa4ff;--acs:#1c2850;--gn:#4ade9a;--bd:#667593;--gns:#12342a;--ls:#ff8a75;--lss:#3b1b16;--ws:#3a2c0a;--wi:#ffd98a;--sh:rgba(0,0,0,.6);color-scheme:dark}}
 *{box-sizing:border-box}html{scroll-padding-top:env(safe-area-inset-top,0px)}
 body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "IBM Plex Sans",system-ui,sans-serif;padding-top:env(safe-area-inset-top,0px)}
 h1,h2,h3,.pr,.num{font-family:Archivo,"IBM Plex Sans",system-ui,sans-serif}
@@ -17,18 +19,19 @@ button{font:inherit;color:inherit;cursor:pointer}[hidden]{display:none!important
 .top{position:sticky;top:0;z-index:5;display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 0 10px;background:var(--bg)}
 h1{font-size:24px;margin:0;font-weight:800;letter-spacing:-.01em}.sub{color:var(--mu);font-size:13px}
 h2{font-size:18px;margin:22px 0 4px;font-weight:800}h3{font-size:15px;margin:18px 0 6px;font-weight:800}.hint{color:var(--mu);font-size:13px;margin:0 0 10px}
-.btn{border:1px solid var(--ln);background:var(--s);border-radius:99px;padding:7px 14px;font-weight:500;font-size:13.5px}
+.btn{border:1px solid var(--bd);background:var(--s);border-radius:99px;padding:7px 14px;font-weight:500;font-size:13.5px}
 .btn.pri{background:var(--ac);border-color:var(--ac);color:#fff}@media (prefers-color-scheme:dark){.btn.pri{color:#0b1120}}
 .btn[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
 .row{display:flex;gap:8px;overflow-x:auto;padding:2px 0 8px;scrollbar-width:none}.row::-webkit-scrollbar{display:none}.row>*{flex:none}
 .note{margin:10px 0;padding:10px 12px;border-radius:10px;background:var(--ws);color:var(--wi);font-size:13.5px}
 .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin:6px 0 4px}
 .tile{background:var(--s);border:1px solid var(--ln);border-radius:12px;padding:10px 12px}.tile .num{font-size:22px;font-weight:800;display:block}.tile small{color:var(--mu);font-size:12.5px}
-.tools{display:flex;gap:8px;margin:4px 0 8px}input,select,textarea{font:inherit;color:var(--ink);background:var(--s);border:1px solid var(--ln);border-radius:10px;padding:9px 11px;min-width:0}.tools input{flex:1}
+.tools{display:flex;gap:8px;margin:4px 0 8px}input,select,textarea{font:inherit;color:var(--ink);background:var(--s);border:1px solid var(--bd);border-radius:10px;padding:9px 11px;min-width:0}.tools input{flex:1}
 .list{display:grid;gap:12px;margin-top:8px}@media(min-width:760px){.list{grid-template-columns:1fr 1fr}}
 .card{background:var(--s);border:1px solid var(--ln);border-radius:14px;padding:12px;display:grid;grid-template-columns:84px 1fr;gap:12px;cursor:pointer;align-content:start}
 .pic{height:84px;border-radius:10px;background:var(--acs);display:grid;place-items:center;font-size:34px;position:relative;overflow:hidden}.pic img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .rank{position:absolute;left:4px;top:4px;z-index:1;background:var(--ink);color:var(--bg);font:800 11px Archivo,sans-serif;border-radius:6px;padding:1px 6px}
+.lk{background:none;border:0;padding:0;margin:0;text-align:left;font:inherit;font-weight:600;color:var(--ink);display:inline}
 .ttl{font-weight:600;line-height:1.3;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .meta{display:flex;flex-wrap:wrap;gap:2px 12px;color:var(--mu);font-size:12.5px;margin:3px 0}
 .meta span{display:inline-flex;align-items:center;gap:4px}.meta svg{width:13px;height:13px}
@@ -47,7 +50,7 @@ h2{font-size:18px;margin:22px 0 4px;font-weight:800}h3{font-size:15px;margin:18p
 .panel{background:var(--s);border:1px solid var(--ln);border-radius:14px;padding:4px 14px}
 .ag{display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--s);border:1px solid var(--ln);border-radius:12px;padding:10px 12px;margin-bottom:8px}.ag b{display:block;overflow-wrap:anywhere}.ag span{color:var(--mu);font-size:12.5px}
 .form{display:grid;gap:8px;grid-template-columns:1fr 1fr;margin:10px 0}.form input:first-child,.form button{grid-column:1/-1}
-label{display:block;font-size:13px;color:var(--mu);margin:12px 0 4px}textarea,.sett input{width:100%}.checks{display:flex;flex-wrap:wrap;gap:6px}.checks label{margin:0;display:flex;align-items:center;gap:6px;border:1px solid var(--ln);background:var(--s);border-radius:99px;padding:5px 12px;color:var(--ink);font-size:13px}
+label{display:block;font-size:13px;color:var(--mu);margin:12px 0 4px}textarea,.sett input{width:100%}.checks{display:flex;flex-wrap:wrap;gap:6px}.checks label{margin:0;display:flex;align-items:center;gap:6px;border:1px solid var(--bd);background:var(--s);border-radius:99px;padding:5px 12px;color:var(--ink);font-size:13px}
 .empty{text-align:center;color:var(--mu);padding:28px 10px}
 .nav{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--s);border-top:1px solid var(--ln);display:flex;justify-content:center;padding:0 8px env(safe-area-inset-bottom,0px)}
 .nav button{flex:1;max-width:150px;border:0;background:none;padding:9px 2px 8px;color:var(--mu);display:grid;justify-items:center;gap:2px;font-size:12px;font-weight:500}
@@ -62,231 +65,20 @@ label{display:block;font-size:13px;color:var(--mu);margin:12px 0 4px}textarea,.s
 .msg{width:100%;min-height:92px;font-size:14px}.trust{display:inline-block;min-width:34px;text-align:center;font:800 13px Archivo,sans-serif;border-radius:7px;padding:1px 8px}
 .spark{width:100%;height:46px}.spark polyline{fill:none;stroke:var(--ac);stroke-width:2;stroke-linejoin:round}
 details summary{cursor:pointer;color:var(--ac);font-size:13.5px}
+.map{height:320px;border-radius:14px;overflow:hidden;border:1px solid var(--ln);margin:10px 0;background:var(--acs)}.leaflet-container{font:inherit}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:8px}.two input{width:100%}
+.inl{display:flex;gap:8px;align-items:center;color:var(--ink);margin-top:10px}.inl input{width:auto}
+.place{cursor:pointer}.place:hover{background:var(--acs)}.sett h3{margin-top:22px}.tr{display:grid;gap:8px;margin-top:10px}.tr select,.tr input{width:100%}
+.fl.place{grid-template-columns:120px 1fr auto}.bi{display:block}.bi details{margin-top:2px}
 </style></head>
 <body><div class="app">
 <header class="top"><div><h1>Market Flow</h1><div class="sub" id="upd">Loading…</div></div><button class="btn pri" id="scanBtn">Scan now</button></header>
-<div id="msg"></div>
+<div id="msg" role="status" aria-live="polite"></div>
 <main id="main"></main>
 </div>
 <nav class="nav" id="nav" aria-label="Sections"></nav>
 <div class="veil" id="veil" hidden></div><aside class="sheet" id="sheet" role="dialog" aria-modal="true" aria-label="Listing preview" hidden></aside>
 <script src="config.js"></script>
-<script>
-const C=window.MF_CONFIG||{};
-const $=id=>document.getElementById(id);
-const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const peso=v=>v==null||isNaN(v)?"?":(v<0?"-":"")+"₱"+Math.abs(Math.round(v)).toLocaleString("en-PH");
-const num=v=>v==null||v===""?null:(isFinite(+v)?+v:null);
-const mins=iso=>iso?Math.max(0,Math.round((Date.now()-new Date(iso))/6e4)):null;
-const ago=iso=>{const m=mins(iso);return m==null?"":m<60?m+" min ago":m<1440?Math.floor(m/60)+" h ago":Math.floor(m/1440)+" d ago"};
-const safeUrl=u=>/^https:\/\//.test(u||"")?u:"";
-const EMO={"Phones":"📱","Tablets & Wearables":"⌚","Laptops":"💻","Desktops & Parts":"🖥️","Monitors":"🖵","Peripherals":"⌨️","Audio":"🎧","Gaming":"🎮","Cameras & Drones":"📷","Networking & Storage":"💾","Smart Home & Power":"🔌","Printers & 3D":"🖨️","Other":"📦"};
-const BASIS={buyer:"a buyer is asking",sold:"recent sold prices",asking:"current asking prices",ai:"an AI estimate"},CONF={A:["Buyer found","up"],B:["Sold comps","up"],C:["Market comps",""],D:["Estimate","warn"]};
-const IC={flips:'<path d="M4 8h13l-3-3M20 16H7l3 3"/>',buy:'<path d="M3 12V4h8l9 9-8 8-9-9z"/><path d="M7.5 7.5h.01"/>',sell:'<path d="M12 3v18M16 7.5c0-1.7-1.8-3-4-3s-4 1.3-4 3 1.8 2.6 4 3 4 1.3 4 3-1.8 3-4 3-4-1.3-4-3"/>',profit:'<path d="M4 20V10M10 20V5M16 20v-7M22 20H2"/>',settings:'<path d="M4 7h10M18 7h2M4 17h2M10 17h10M16 5v4M8 15v4"/>'};
-const NAV=[["flips","Flips"],["buy","Buy"],["sell","Sell"],["profit","Profit"],["settings","Settings"]];
-let ALL=[],GONE=0,VIEW="flips",cat="All",QS="",SORT="score",F={profit:false,fresh:false,saved:false,drops:false},ST={},TR=[],PRIV={},PASS="",DEMO=/[?&]demo/.test(location.search);
-try{ST=JSON.parse(localStorage.getItem("mf-saved")||"{}");TR=JSON.parse(localStorage.getItem("mf-trades")||"[]");PASS=localStorage.getItem("mf-pass")||""}catch(e){}
-const LV=+(localStorage.getItem("mf-visit")||Date.now()-3*36e5);
-document.addEventListener("visibilitychange",()=>{if(document.hidden)try{localStorage.setItem("mf-visit",Date.now())}catch(e){}});
-const saveTR=()=>{try{localStorage.setItem("mf-trades",JSON.stringify(TR))}catch(e){}};
-const note=t=>{$("msg").innerHTML=t?'<div class="note">'+t+'</div>':""};
-const H=()=>({apikey:C.anonKey,Authorization:"Bearer "+C.anonKey}),API=()=>(C.url||"").replace(/\/$/,"");
-const sells=()=>ALL.filter(x=>x.intent!=="wanted"),wants=()=>ALL.filter(x=>x.intent==="wanted");
-const isNew=x=>+new Date(x.first_seen)>LV;
-const svg=(n,c)=>`<svg viewBox="0 0 24 24" class="${c||""}" aria-hidden="true">${IC[n]}</svg>`;
-const pin='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>';
-const clock='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>';
-const arrow='<svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>';
-
-function spread(x){
-  if(!x.sell_price||!x.price)return"";
-  const sell=x.sell_price,fees=Math.round(sell*.08),tr=x.travel_cost||0,tot=Math.max(sell,x.price+fees+tr),p=v=>Math.max(0,v/tot*100).toFixed(1);
-  return `<div class="spread" role="img" aria-label="Of ${peso(sell)}, ${peso(x.price)} is your cost, ${peso(fees+tr)} fees and travel, ${peso(sell-x.price-fees-tr)} profit"><i style="width:${p(x.price)}%"></i><u style="width:${p(fees+tr)}%"></u><b style="width:${p(sell-x.price-fees-tr)}%"></b></div>`}
-function netTag(x){return x.net_profit==null?"":`<span class="net${x.net_profit<=0?" neg":""}" title="Expected profit after fees and travel">${x.net_profit>0?"+":""}${peso(x.net_profit)}</span>`}
-function where(x){const a=x.area||x.location_text||"";return (a?`<span>${pin}${esc(a)}</span>`:"")+(x.distance_km!=null?`<span>${x.distance_km} km away</span>`:"")+`<span>${clock}${esc(ago(x.posted_at||x.first_seen))}</span>`}
-function tags(x){let t="";if(isNew(x))t+='<span class="chip warn">New</span>';if(x.price_drop_pct>0)t+=`<span class="chip up">Down ${x.price_drop_pct}%</span>`;const c=CONF[x.confidence];if(c)t+=`<span class="chip ${c[1]}">${c[0]}</span>`;if(x.kind==="post")t+='<span class="chip">Group post</span>';return t}
-function pic(x,i){const im=safeUrl(x.image_url);return `<div class="pic">${EMO[x.category]||"📦"}${im?`<img src="${esc(im)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">`:""}${i!=null?`<span class="rank">#${i+1}</span>`:""}</div>`}
-function card(x,i){
-  const w=x.intent==="wanted",buyers=(x.matches||[]).length;
-  return `<article class="card" data-open="${esc(x.hash)}"><div>${pic(x,i)}</div><div><div class="ttl">${esc(x.title)}</div><div class="meta">${where(x)}</div><div>${tags(x)}</div></div>
-${w?`<div class="strip"><div><small>Buyer's budget</small><b class="pr">${x.price?peso(x.price):"not stated"}</b></div>${netTag(x)}</div>`:`<div class="strip"><div><small>Buy at</small><b class="pr">${peso(x.price)}</b></div>${x.sell_price?arrow+`<div><small>Sell at</small><b class="pr">${peso(x.sell_price)}</b></div>`:""}${netTag(x)}</div>${spread(x)}`}
-<div class="foot"><span>${w?(buyers?buyers+" seller"+(buyers>1?"s":"")+" can fill this":"No seller found yet"):(buyers?buyers+" buyer"+(buyers>1?"s":"")+" asking":"No buyer asking yet")}${!w&&x.sell_days?" · sells in ~"+Math.round(x.sell_days)+" d":""}</span><button class="btn" data-act="save" data-h="${esc(x.hash)}">${ST[x.hash]?"Saved":"Save"}</button></div></article>`}
-const cats=rows=>["All",...[...new Set(rows.map(x=>x.category||"Other"))]];
-const chipRow=rows=>`<div class="row" data-role="cats">${cats(rows).map(c=>`<button class="btn" data-cat="${esc(c)}" aria-pressed="${c==cat}">${esc(c)}</button>`).join("")}</div>`;
-function filtered(rows){return rows.filter(x=>(cat=="All"||(x.category||"Other")==cat)&&(x.title||"").toLowerCase().includes(QS)&&(!F.profit||x.net_profit>0)&&(!F.fresh||isNew(x))&&(!F.saved||ST[x.hash])&&(!F.drops||x.price_drop_pct>0))}
-const SORTS={score:x=>-x.score,net:x=>-(x.net_profit??-1e9),margin:x=>-(x.margin_pct??-1e9),demand:x=>-x.demand,dist:x=>x.distance_km==null?1e9:x.distance_km,new:x=>mins(x.first_seen),drop:x=>-(x.price_drop_pct||0)};
-function products(){
-  const g={};sells().forEach(x=>{const k=x.name||x.title;(g[k]??={name:k,cat:x.category,rows:[],asks:0}).rows.push(x)});
-  wants().forEach(w=>{if(g[w.name])g[w.name].asks++});
-  return Object.values(g).map(p=>{const pos=p.rows.filter(r=>r.net_profit>0),avg=a=>a.reduce((s,r)=>s+(r.net_profit||0),0)/(a.length||1),dem=p.rows.reduce((s,r)=>s+r.demand,0)/p.rows.length;
-    return {...p,count:p.rows.length,flips:pos.length,avgNet:avg(pos),best:Math.max(0,...p.rows.map(r=>r.net_profit||0)),demand:Math.round(dem),days:(p.rows.find(r=>r.sell_days)||{}).sell_days,score:avg(pos)*(.5+dem/100)+p.asks*100}}).filter(p=>p.flips>0).sort((a,b)=>b.score-a.score)}
-const prodRow=p=>`<div class="fl"><b>${esc(p.name)}</b><div><div class="bar"><i style="width:${p.demand}%"></i></div><small>demand ${p.demand}${p.days?" · sells in ~"+Math.round(p.days)+" d":""}${p.asks?" · "+p.asks+" buyer"+(p.asks>1?"s":"")+" asking":""}</small></div><small>${p.flips} flip${p.flips>1?"s":""} · avg ${peso(p.avgNet)}</small></div>`;
-
-function vFlips(){
-  const fl=sells().filter(x=>x.net_profit>0),best=fl.reduce((m,x)=>Math.max(m,x.net_profit),0),L=filtered(fl).sort((a,b)=>SORTS.score(a)-SORTS.score(b)),pr=products().slice(0,5);
-  return `<div class="tiles"><div class="tile"><span class="num">${best?peso(best):"-"}</span><small>best profit on one flip</small></div><div class="tile"><span class="num">${fl.length}</span><small>flips worth doing</small></div><div class="tile"><span class="num">${wants().length}</span><small>buyers asking</small></div><div class="tile"><span class="num">${GONE}</span><small>sold or removed (48 h)</small></div></div>
-<h2>Top products to flip</h2><p class="hint">Ranked by profit per item, demand and open buyer requests.</p>${pr.length?`<div class="panel">${pr.map(prodRow).join("")}</div>`:'<div class="empty">Nothing profitable yet. Run a scan, or open this page with ?demo to preview.</div>'}
-<h2>Best flips right now</h2><p class="hint">Buy from the seller, sell to the buyer or at the market price. Profit is after 8% fees and travel.</p>${chipRow(fl)}<div class="list">${L.length?L.slice(0,40).map(card).join(""):'<div class="empty">No flips match.</div>'}</div>`}
-function vBuy(){
-  const L=filtered(sells()).sort((a,b)=>SORTS[SORT](a)-SORTS[SORT](b));
-  return `<h2>Buy</h2><p class="hint">Every listing and group post for sale near you.</p>${chipRow(sells())}
-<div class="tools"><input id="q" type="search" placeholder="Search items" aria-label="Search items" value="${esc(QS)}"><select id="sort" aria-label="Sort by">${[["score","Best flip"],["net","Most profit"],["margin","Best return"],["demand","Highest demand"],["dist","Nearest"],["new","Newest"],["drop","Biggest price drop"]].map(o=>`<option value="${o[0]}"${o[0]==SORT?" selected":""}>${o[1]}</option>`).join("")}</select></div>
-<div class="row">${[["profit","Profitable only"],["fresh","New since last visit ("+sells().filter(isNew).length+")"],["drops","Price drops"],["saved","Saved"]].map(o=>`<button class="btn" data-f="${o[0]}" aria-pressed="${F[o[0]]}">${o[1]}</button>`).join("")}</div>
-<div class="list">${L.length?L.slice(0,100).map((x,i)=>card(x,i)).join(""):'<div class="empty">'+(ALL.length?"No items match these filters.":"Connected, but no listings are saved yet. Run the scanner, then refresh.")+'</div>'}</div>`}
-const sim=(a,b)=>{const A=new Set(String(a).toLowerCase().split(/\W+/).filter(Boolean)),B=new Set(String(b).toLowerCase().split(/\W+/).filter(Boolean));const i=[...A].filter(t=>B.has(t)).length;return i/(A.size+B.size-i||1)};
-const med=a=>{const s=[...a].sort((x,y)=>x-y),m=s.length>>1;return s.length?(s.length%2?s[m]:(s[m-1]+s[m])/2):null};
-function vSell(){
-  const W=filtered(wants()).sort((a,b)=>b.score-a.score),stock=TR.filter(t=>t.sell==null),pr=products();
-  const stockRows=stock.map(t=>{const m=sells().filter(x=>sim(t.item,x.name||x.title)>=.4).map(x=>x.sell_price||x.price),md=med(m);return `<div class="ag"><div><b>${esc(t.item)}</b><span>${md?`Market about ${peso(md)} from ${m.length} listing${m.length>1?"s":""}. List at ${peso(Math.round(md*.97/50)*50)}. You paid ${peso(t.buy)}.`:"No comparable listings yet. You paid "+peso(t.buy)+"."}</span></div></div>`}).join("");
-  return `<h2>Sell</h2><p class="hint">Who wants to buy, what is in demand, and what to list your own stock at.</p>
-<h3>Buyers asking near you</h3>${chipRow(wants())}<div class="list">${W.length?W.slice(0,40).map(card).join(""):'<div class="empty">No "wanted" posts yet. Add public Facebook groups in Settings.</div>'}</div>
-<h3>In demand</h3>${pr.length?`<div class="panel">${pr.slice(0,12).map(prodRow).join("")}</div>`:'<div class="empty">No data yet.</div>'}
-<h3>Your stock</h3>${stockRows||'<div class="empty">Items you log in Profit and have not sold show up here with a suggested price.</div>'}`}
-function vProfit(){
-  const sold=TR.filter(t=>t.sell!=null),stock=TR.filter(t=>t.sell==null),profit=sold.reduce((s,t)=>s+t.sell-t.buy,0),cost=sold.reduce((s,t)=>s+t.buy,0),byC={};
-  sold.forEach(t=>{const c=t.cat||"Other";(byC[c]??=[0,0]);byC[c][0]+=t.sell-t.buy;byC[c][1]++});
-  return `<h2>Profit tracker</h2><div class="tiles" id="pSum">${[[peso(profit),"profit"],[cost?Math.round(profit/cost*100)+"%":"-","return"],[stock.length,"in stock"],[peso(stock.reduce((s,t)=>s+t.buy,0)),"money tied up"]].map(a=>`<div class="tile"><span class="num">${esc(a[0])}</span><small>${a[1]}</small></div>`).join("")}</div>
-<div class="form"><input id="tItem" placeholder="Item you bought" aria-label="Item you bought"><input id="tBuy" type="number" inputmode="decimal" placeholder="Paid (₱)" aria-label="Paid"><select id="tCat" aria-label="Category">${Object.keys(EMO).map(c=>`<option>${esc(c)}</option>`).join("")}</select><button class="btn pri" id="tAdd">Add item</button></div>
-<div id="pList">${TR.length?TR.slice().reverse().map(t=>`<div class="ag"><div><b>${esc(t.item)}</b><span>${esc(t.cat||"Other")}, paid ${peso(t.buy)}${t.sell!=null?", sold "+peso(t.sell)+", "+(t.sell>=t.buy?"+":"")+peso(t.sell-t.buy):""}</span></div><div>${t.sell==null?`<button class="btn" data-sold="${t.id}">Sold</button> `:""}<button class="btn" data-del="${t.id}">Delete</button></div></div>`).join(""):'<div class="empty">Nothing yet. Add what you buy, or tap Bought in a listing preview.</div>'}</div>
-<h3>Profit by category</h3><div class="panel" id="pCat">${Object.entries(byC).map(([c,v])=>`<div class="fl"><b>${esc(c)}</b><span></span><small>${v[1]} sold, ${peso(v[0])}</small></div>`).join("")||'<div class="empty">Mark items as sold to see this.</div>'}</div>
-<div class="row" style="margin-top:12px"><button class="btn" id="tCsv">Export CSV</button></div><p class="hint">Saved on this device only. Clearing browser data erases it, so export now and then.</p>`}
-const CATLIST=Object.keys(EMO).filter(c=>c!=="Other");
-function vSettings(){
-  return `<h2>Scanner settings</h2><p class="hint">Applied on the next scan. Leave a box empty for no limit.</p><div class="sett">
-<label>Categories to scan</label><div class="checks" id="sCats">${CATLIST.map(c=>`<label><input type="checkbox" value="${esc(c)}"> ${esc(c)}</label>`).join("")}</div>
-<label for="sWatch">Your own searches, run every scan (separate with commas)</label><textarea id="sWatch" rows="2"></textarea>
-<label for="sGroups">Public Facebook groups near you (one link per line)</label><textarea id="sGroups" rows="3" placeholder="https://www.facebook.com/groups/..."></textarea>
-<label for="sMargin">Alert only if return is at least (%)</label><input id="sMargin" type="number" inputmode="decimal">
-<label for="sNet">Alert only if profit is at least (₱)</label><input id="sNet" type="number" inputmode="decimal">
-<label for="sPrice">Alert only if price is at most (₱)</label><input id="sPrice" type="number" inputmode="decimal">
-<label for="sKm">Alert only if within (km)</label><input id="sKm" type="number" inputmode="decimal">
-<label for="sPass">Passcode (also unlocks seller names and descriptions)</label><input id="sPass" type="password" autocomplete="off" value="${esc(PASS)}">
-<div class="row" style="margin-top:14px"><button class="btn pri" id="sSave">Save settings</button></div></div>`}
-function render(){
-  const lm=ALL.reduce((m,x)=>Math.max(m,+new Date(x.last_seen)),0),m=lm?Math.round((Date.now()-lm)/6e4):null;
-  $("upd").textContent=DEMO?"Demo data, not your real listings":m==null?(C.url?"No listings yet":"Not connected"):"Last scan "+(m<60?m+" min":Math.floor(m/60)+" h")+" ago";
-  if(!DEMO&&m!=null&&m>180)note("The scanner has not saved anything for over 3 hours. Check the Actions tab on GitHub.");
-  try{const nb=sells().filter(isNew).length;navigator.setAppBadge&&navigator.setAppBadge(nb)}catch(e){}
-  $("nav").innerHTML=NAV.map(n=>`<button data-v="${n[0]}"${n[0]==VIEW?' aria-current="page"':""}>${svg(n[0])}<span>${n[1]}</span></button>`).join("");
-  $("main").innerHTML={flips:vFlips,buy:vBuy,sell:vSell,profit:vProfit,settings:vSettings}[VIEW]();
-  if(VIEW=="settings")fillSettings();
-}
-// ---------- preview sheet ----------
-let CUR=null;
-async function getPrivate(h){
-  if(PRIV[h])return PRIV[h];
-  if(DEMO)return PRIV[h]={seller_name:"Demo Seller",seller_url:"",seller_rating:4.8,seller_reviews:23,seller_tenure:3,seller_score:88,description:"Barely used, complete with box and charger. Selling because I upgraded. Meetup only.",meetup:"SM Clark entrance"};
-  if(!PASS)return {none:"Enter your passcode in Settings to see the seller and full description."};
-  try{const r=await fetch(API()+"/rest/v1/rpc/get_private",{method:"POST",headers:{...H(),"content-type":"application/json"},body:JSON.stringify({p_pass:PASS,p_hashes:[h]})});
-    if(!r.ok)return {none:r.status==400?"Passcode not accepted. Fix it in Settings.":"Seller details need migration-3.sql (HTTP "+r.status+")."};
-    return PRIV[h]=(await r.json())[0]||{none:"No seller details were saved for this listing."}}catch(e){return {none:"Could not load seller details."}}}
-async function getHistory(h){
-  if(DEMO)return [3100,3000,2900,2700];
-  try{const r=await fetch(API()+"/rest/v1/price_history?select=price,seen_at&order=seen_at.asc&hash=eq."+encodeURIComponent(h),{headers:H()});return r.ok?(await r.json()).map(p=>+p.price):[]}catch(e){return[]}}
-const offerText=x=>`Hi! Is the ${(x.name||x.title).slice(0,60)} still available?${x.issues&&x.issues.length?" I noticed "+x.issues[0]+", so":""} Would you accept ${peso(x.offer_price||x.price)}? I can meet ${x.area||x.location_text?"around "+(x.area||x.location_text):"anywhere convenient"} and pay cash. Salamat po!`;
-function spark(a){if(a.length<2)return"";const mn=Math.min(...a),mx=Math.max(...a),w=300,h=46,pts=a.map((v,i)=>`${(i/(a.length-1)*w).toFixed(1)},${(h-4-(mx==mn?.5:(v-mn)/(mx-mn))*(h-8)).toFixed(1)}`).join(" ");return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" role="img" aria-label="Price history from ${peso(a[0])} to ${peso(a[a.length-1])}"><polyline points="${pts}"/></svg>`}
-function sheetHtml(x){
-  const w=x.intent==="wanted",fees=Math.round((x.sell_price||0)*.08),tr=x.travel_cost||0,imgs=[x.image_url,...(x.images||[])].filter((u,i,a)=>safeUrl(u)&&a.indexOf(u)===i),u=safeUrl(x.url);
-  const lvl=["","Minor issues","Major issues"][x.issue_level||0];
-  return `<button class="btn x" data-act="close">Close</button><h3 style="margin-top:2px">${esc(x.title)}</h3><div>${tags(x)}${x.condition&&x.condition!=="unknown"?`<span class="chip">${esc(x.condition)}</span>`:""}${x.negotiable?'<span class="chip">Negotiable</span>':""}</div>
-<div class="gal"><div class="main" id="gmain">${imgs[0]?`<img class="big" src="${esc(imgs[0])}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">`:EMO[x.category]||"📦"}</div>${imgs.length>1?`<div class="thumbs">${imgs.map((s,i)=>`<img src="${esc(s)}" alt="Photo ${i+1}" data-big="${esc(s)}" referrerpolicy="no-referrer"${i?"":' aria-current="true"'}>`).join("")}</div>`:""}</div>
-${x.summary?`<p>${esc(x.summary)}</p>`:""}
-${w?`<h3>Buyer's request</h3><div class="kv"><span>Budget</span><b>${x.price?peso(x.price):"not stated"}</b><span>Area</span><b>${esc(x.area||x.location_text||"not stated")}</b><span>Posted</span><b>${esc(ago(x.posted_at||x.first_seen))}</b></div>`
-:`<h3>Profit breakdown</h3><div class="kv"><span>You buy at</span><b>${peso(x.price)}</b><span>Fees and haggling (8%)</span><b>-${peso(fees)}</b><span>Travel to meet</span><b>-${peso(tr)}</b><span>You sell at (${esc(BASIS[x.sell_basis]||"no estimate")})</span><b>${x.sell_price?peso(x.sell_price):"?"}</b><span class="tot">Net profit</span><b class="tot">${x.net_profit==null?"?":peso(x.net_profit)}${x.margin_pct!=null?" ("+x.margin_pct+"%)":""}</b></div><div style="margin-top:8px">${spread(x)}</div>`}
-<h3>${w?"Sellers who can fill it":"Buyers asking"}</h3>${(x.matches||[]).length?(x.matches||[]).map(m=>w?`<div class="ag"><div><b>${esc(m.title)}</b><span>${peso(m.price)}, you would net ${m.net==null?"?":peso(m.net)}</span></div><button class="btn" data-open="${esc(m.hash)}">Preview</button></div>`
- :`<div class="ag"><div><b>${m.budget?"Budget "+peso(m.budget):"Budget not stated"}</b><span>${esc(m.area||"area not stated")}${m.at?", "+esc(ago(m.at)):""}</span></div>${safeUrl(m.url)?`<a class="btn" href="${esc(safeUrl(m.url))}" target="_blank" rel="noopener noreferrer">Open post</a>`:""}</div>`).join(""):`<p class="hint">${w?"No seller found yet.":"No buyer asking yet. The sell price is based on "+esc(BASIS[x.sell_basis]||"nothing yet")+"."}</p>`}
-${(x.specs||[]).length||(x.issues||[]).length?`<h3>Specs and condition</h3><div>${(x.specs||[]).map(s=>`<span class="chip">${esc(s)}</span>`).join("")}${(x.issues||[]).map(s=>`<span class="chip bad">${esc(s)}</span>`).join("")}</div>${lvl?`<p class="hint">${lvl}: the profit estimate already allows for this.</p>`:""}`:""}
-<h3>Seller</h3><div id="privBox" class="hint">Loading…</div>
-<h3>Price history</h3><div id="histBox" class="hint">Loading…</div>
-${w?"":`<h3>Offer message</h3><textarea class="msg" id="offerTxt" readonly>${esc(offerText(x))}</textarea><div class="row" style="margin-top:8px"><button class="btn pri" data-act="copy">Copy message</button>${u?`<a class="btn" href="${esc(u)}" target="_blank" rel="noopener noreferrer">Open listing</a>`:""}<button class="btn" data-act="bought" data-h="${esc(x.hash)}">Bought</button></div>`}
-${w&&u?`<div class="row" style="margin-top:8px"><a class="btn pri" href="${esc(u)}" target="_blank" rel="noopener noreferrer">Open post</a></div>`:""}`}
-async function openSheet(h){
-  const x=ALL.find(y=>y.hash==h);if(!x)return;CUR=x;
-  $("sheet").innerHTML=sheetHtml(x);$("sheet").hidden=false;$("veil").hidden=false;$("sheet").scrollTop=0;document.body.style.overflow="hidden";
-  const p=await getPrivate(h);if(CUR!==x)return;
-  $("privBox").innerHTML=p.none?esc(p.none):`<div class="kv"><span>Name</span><b>${safeUrl(p.seller_url)?`<a href="${esc(safeUrl(p.seller_url))}" target="_blank" rel="noopener noreferrer">${esc(p.seller_name||"Profile")}</a>`:esc(p.seller_name||"Unknown")}</b>
-${p.seller_score!=null?`<span>Trust score</span><b><span class="trust chip ${p.seller_score>=75?"up":p.seller_score>=50?"warn":"bad"}">${p.seller_score}</span></b>`:""}${p.seller_rating!=null?`<span>Rating</span><b>${p.seller_rating} (${p.seller_reviews||0} reviews)</b>`:""}${p.seller_tenure!=null?`<span>On the platform</span><b>${p.seller_tenure} years</b>`:""}${p.meetup?`<span>Meet-up spot</span><b>${esc(p.meetup)}</b>`:""}</div>${p.description?`<details style="margin-top:8px"><summary>Full description</summary><p style="white-space:pre-wrap">${esc(p.description)}</p></details>`:""}`;
-  const hs=await getHistory(h);if(CUR!==x)return;$("histBox").innerHTML=hs.length>1?spark(hs)+`<div class="hint">${peso(hs[0])} to ${peso(hs[hs.length-1])} over ${hs.length} scans</div>`:"No price changes recorded yet."}
-function closeSheet(){CUR=null;$("sheet").hidden=true;$("veil").hidden=true;document.body.style.overflow=""}
-function addTrade(item,cat,buy){TR.push({id:Date.now()+Math.floor(Math.random()*999),item,cat:cat||"Other",buy,boughtAt:new Date().toISOString(),sell:null});saveTR()}
-// ---------- events ----------
-document.addEventListener("click",async e=>{
-  const t=e.target,act=t.closest("[data-act]");
-  if(act){const a=act.dataset.act,h=act.dataset.h;
-    if(a=="close")closeSheet();
-    if(a=="save"){ST[h]=!ST[h];try{localStorage.setItem("mf-saved",JSON.stringify(ST))}catch(x){}render()}
-    if(a=="copy"){const tx=$("offerTxt").value;try{await navigator.clipboard.writeText(tx)}catch(x){$("offerTxt").select();document.execCommand&&document.execCommand("copy")}act.textContent="Copied"}
-    if(a=="bought"){const x=ALL.find(y=>y.hash==h),n=parseFloat(prompt("How much did you pay (₱)?",x.price));if(n>0){addTrade(x.title,x.category,n);act.textContent="Added to Profit"}}
-    return}
-  const nb=t.closest("#nav [data-v]");if(nb){VIEW=nb.dataset.v;cat="All";QS="";F={profit:false,fresh:false,saved:false,drops:false};closeSheet();render();scrollTo(0,0);return}
-  const big=t.closest("[data-big]");if(big){$("gmain").innerHTML=`<img class="big" src="${esc(big.dataset.big)}" alt="" referrerpolicy="no-referrer">`;document.querySelectorAll(".thumbs img").forEach(i=>i.setAttribute("aria-current",i==big));return}
-  const cb=t.closest("[data-cat]");if(cb){cat=cb.dataset.cat;render();return}
-  const fb=t.closest("[data-f]");if(fb){F[fb.dataset.f]=!F[fb.dataset.f];render();return}
-  const op=t.closest("[data-open]");if(op&&!t.closest("a")){openSheet(op.dataset.open);return}
-  if(t.id=="veil"){closeSheet();return}
-  const sold=t.dataset.sold,del=t.dataset.del;
-  if(sold){const r=TR.find(x=>x.id==sold),p=parseFloat(prompt("Sold for (₱)?"));if(r&&p>=0){r.sell=p;r.soldAt=new Date().toISOString();saveTR();render()}return}
-  if(del){if(confirm("Delete this item?")){TR=TR.filter(x=>x.id!=del);saveTR();render()}return}
-  if(t.id=="tAdd"){const item=$("tItem").value.trim(),buy=parseFloat($("tBuy").value);if(!item||!(buy>0)){note("Enter the item and what you paid.");return}addTrade(item,$("tCat").value,buy);note("");render();return}
-  if(t.id=="tCsv"){const q=v=>'"'+String(v??"").replace(/"/g,'""')+'"';const rows=[["item","category","paid","sold_for","profit","bought_at","sold_at"],...TR.map(r=>[r.item,r.cat,r.buy,r.sell??"",r.sell==null?"":r.sell-r.buy,r.boughtAt||"",r.soldAt||""])];const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([rows.map(r=>r.map(q).join(",")).join("\n")],{type:"text/csv"}));a.download="market-flow-profit.csv";a.click();return}
-  if(t.id=="sSave"){saveSettings();return}
-  if(t.id=="scanBtn"){scanNow(t);return}
-});
-document.addEventListener("input",e=>{if(e.target.id=="q"){QS=e.target.value.toLowerCase();const p=e.target.selectionStart;render();const q=$("q");q.focus();q.setSelectionRange(p,p)}});
-document.addEventListener("change",e=>{if(e.target.id=="sort"){SORT=e.target.value;render()}});
-document.addEventListener("keydown",e=>{if(e.key=="Escape")closeSheet()});
-// ---------- settings ----------
-async function fillSettings(){
-  if(!C.url||DEMO)return;
-  try{const s=(await(await fetch(API()+"/rest/v1/settings?select=*&id=eq.1",{headers:H()})).json())[0]||{};
-    document.querySelectorAll("#sCats input").forEach(i=>i.checked=(s.categories||[]).includes(i.value));
-    $("sWatch").value=(s.watch||[]).join(", ");$("sGroups").value=(s.groups||[]).join("\n");$("sMargin").value=s.min_margin||"";$("sNet").value=s.min_net??"";$("sPrice").value=s.max_price??"";$("sKm").value=s.max_km??""}
-  catch(e){note("Could not load settings.")}}
-async function saveSettings(){
-  const n=id=>{const v=parseFloat($(id).value);return Number.isFinite(v)?v:null},split=(v,re)=>v.split(re).map(s=>s.trim()).filter(Boolean);
-  const body={p_pass:$("sPass").value,p_watch:split($("sWatch").value,","),p_categories:[...document.querySelectorAll("#sCats input:checked")].map(i=>i.value),p_groups:split($("sGroups").value,/[\n,]/),
-    p_min_margin:n("sMargin"),p_max_price:n("sPrice"),p_max_km:n("sKm"),p_min_net:n("sNet")};
-  try{const r=await fetch(API()+"/rest/v1/rpc/save_settings",{method:"POST",headers:{...H(),"content-type":"application/json"},body:JSON.stringify(body)});
-    if(!r.ok)throw new Error(r.status==400||r.status==404?"wrong passcode, or migration-3.sql was not run":"HTTP "+r.status);
-    PASS=$("sPass").value;PRIV={};try{localStorage.setItem("mf-pass",PASS)}catch(e){}note("Settings saved. They apply on the next scan.")}catch(e){note("Could not save: "+esc(e.message))}}
-// ---------- scan now ----------
-async function scanNow(b){
-  const last=+(localStorage.getItem("mf-last-scan")||0);
-  if(Date.now()-last<6e5){note("A scan was started less than 10 minutes ago. Please wait for it to finish.");return}
-  const seg=location.pathname.split("/").filter(Boolean)[0];
-  const repo=C.repo||(location.hostname.endsWith(".github.io")&&seg?location.hostname.replace(/\.github\.io$/,"")+"/"+seg:"");
-  if(!repo){note('Scan now needs the repo name. Add repo: "owner/name" to docs/config.js.');return}
-  let tk=null;try{tk=localStorage.getItem("mf-gh-token")}catch(x){}
-  if(!tk){tk=prompt("Paste a GitHub fine-grained token for this one repo with Actions: Read and write permission. It is stored only in this browser.");if(!tk)return;tk=tk.trim();try{localStorage.setItem("mf-gh-token",tk)}catch(x){}}
-  b.disabled=true;b.textContent="Starting…";
-  try{
-    const r=await fetch(`https://api.github.com/repos/${repo}/actions/workflows/scan.yml/dispatches`,{method:"POST",headers:{Authorization:"Bearer "+tk,Accept:"application/vnd.github+json","X-GitHub-Api-Version":"2022-11-28"},body:JSON.stringify({ref:"main"})});
-    if(r.status!==204)throw Object.assign(new Error("HTTP "+r.status),{status:r.status});
-    try{localStorage.setItem("mf-last-scan",String(Date.now()))}catch(x){}
-    note("Scan started. New listings should appear in a few minutes. This page refreshes by itself.");
-  }catch(err){
-    if([401,403,404].includes(err.status)){try{localStorage.removeItem("mf-gh-token")}catch(x){}note("GitHub refused the token ("+esc(err.message)+"). Create a fine-grained token for this repo with Actions: Read and write, then try again.")}
-    else note("Could not start the scan: "+esc(err.message));
-  }finally{b.disabled=false;b.textContent="Scan now"}}
-// ---------- data ----------
-const DEMO_ROWS=()=>{const t=m=>new Date(Date.now()-m*6e4).toISOString(),b={source:"demo",kind:"listing",intent:"sell",specs:[],issues:[],images:[],matches:[],last_seen:t(2),distance_km:6,demand:80,issue_level:0,comments:0};return [
-{...b,hash:"d1",category:"Gaming",title:"Nintendo Switch OLED, with dock and 2 games",name:"switch oled",price:10500,sell_price:13200,sell_basis:"buyer",confidence:"A",net_profit:1200,margin_pct:11,travel_cost:60,score:84,demand:92,area:"Angeles",condition:"good",specs:["64GB","OLED screen","Dock and charger","2 games"],issues:["Light scratch on dock"],issue_level:1,summary:"Switch OLED in good condition with dock, charger and two games.",offer_price:9500,sell_days:3,price_drop_pct:12,first_seen:t(40),posted_at:t(40),matches:[{url:"https://www.facebook.com/groups/demo/posts/1",budget:14000,area:"Mabalacat",at:t(120)}]},
-{...b,hash:"d2",category:"Desktops & Parts",title:"RTX 3060 12GB, used 1 year",name:"rtx 3060",price:9000,sell_price:11800,sell_basis:"sold",confidence:"B",net_profit:1700,margin_pct:19,travel_cost:40,score:78,demand:85,area:"Magalang",condition:"good",specs:["12GB GDDR6","Dual fan"],summary:"RTX 3060 12GB used for a year, never mined.",offer_price:8500,sell_days:2,first_seen:t(300),posted_at:t(300)},
-{...b,hash:"d3",category:"Phones",title:"iPhone 11 128GB, battery 82%",name:"iphone 11",price:9500,sell_price:11000,sell_basis:"asking",confidence:"C",net_profit:-100,margin_pct:-1,travel_cost:200,score:40,demand:95,area:"Clark",condition:"fair",issues:["Battery 82%"],issue_level:1,offer_price:8500,first_seen:t(900),posted_at:t(900)},
-{...b,hash:"d4",category:"Peripherals",title:"Keychron K2 mechanical keyboard",name:"keychron k2",price:2200,sell_price:3000,sell_basis:"ai",confidence:"D",net_profit:340,margin_pct:15,travel_cost:30,score:55,demand:70,area:"San Fernando",specs:["75% layout","Brown switches"],offer_price:2000,first_seen:t(2000),posted_at:t(2000)},
-{...b,hash:"w1",category:"Gaming",kind:"post",intent:"wanted",title:"WTB Nintendo Switch OLED, budget 14k",name:"switch oled",price:14000,score:70,demand:80,area:"Mabalacat",url:"https://www.facebook.com/groups/demo/posts/1",first_seen:t(120),posted_at:t(120),matches:[{hash:"d1",title:"Nintendo Switch OLED, with dock and 2 games",price:10500,net:1200}]},
-{...b,hash:"w2",category:"Desktops & Parts",kind:"post",intent:"wanted",title:"Looking for RTX 3060, up to 12k",name:"rtx 3060",price:12000,score:62,demand:75,area:"Angeles",url:"https://www.facebook.com/groups/demo/posts/2",first_seen:t(500),posted_at:t(500),matches:[{hash:"d2",title:"RTX 3060 12GB, used 1 year",price:9000,net:1900}]}]};
-async function load(){
-  if(DEMO){ALL=DEMO_ROWS();GONE=3;render();return}
-  if(!C.url||!C.anonKey){note("Setup needed: open <b>docs/config.js</b> and paste your Supabase Project URL and anon key.");render();return}
-  try{
-    const since=new Date(Date.now()-48*36e5).toISOString();
-    const r=await fetch(API()+"/rest/v1/listings?select=*&last_seen=gte."+encodeURIComponent(since)+"&order=score.desc&limit=600",{headers:H()});
-    if(!r.ok)throw new Error("HTTP "+r.status);
-    const rows=(await r.json()).map(x=>({...x,price:num(x.price),sell_price:num(x.sell_price),net_profit:num(x.net_profit),margin_pct:num(x.margin_pct),distance_km:num(x.distance_km),sell_days:num(x.sell_days),travel_cost:num(x.travel_cost),offer_price:num(x.offer_price),price_drop_pct:num(x.price_drop_pct)||0,intent:x.intent||"sell",specs:x.specs||[],issues:x.issues||[],images:x.images||[],matches:x.matches||[]}));
-    GONE=rows.filter(x=>x.removed_at).length;ALL=rows.filter(x=>!x.removed_at);
-    if(!CUR&&!document.querySelector("#main input:focus, #main textarea:focus"))note("");render();
-  }catch(e){note("Could not load data ("+esc(e.message)+"). Check the URL and anon key, and that schema.sql and the migrations were run.")}}
-render();load();setInterval(()=>{if(!CUR&&VIEW!="settings"&&VIEW!="profit")load()},60000);
-if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
-</script></body></html>
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js" integrity="sha384-cxOPjt7s7Iz04uaHJceBmS+qpjv2JkIHNVcuOrM+YHwZOmJGBXI00mdUXEq65HTH" crossorigin="anonymous" defer></script>
+<script src="app.js" defer></script>
+</body></html>

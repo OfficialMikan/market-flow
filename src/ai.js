@@ -17,12 +17,12 @@ const KW = {
 };
 const WANT = /\b(wtb|looking for|looking to buy|lf|iso|hanap|need to buy|want to buy|wanted|bibili ako)\b/i;
 const SYS = `You help a Philippine tech reseller read second-hand listings and Facebook group posts. Reply with ONLY a JSON array, no prose.
-For each input {i,kind,title,price,place,text,attrs} return {i,intent,name,brand,category,price,area,condition,specs,issues,issue_level,multi,resale,demand,flag,summary}:
+For each input {i,kind,title,price,place,text,attrs} return {i,intent,name,brand,model,color,year,category,price,area,condition,specs,issues,issue_level,multi,quantity,warranty,receipt,reason,delivery,resale,demand,flag,summary}:
 intent: "sell" (item for sale), "wanted" (someone wants to buy it) or "other" (not a sale or wanted post);
 name: short lowercase product name, brand + model + key variant, max 5 words, identical for the same product;
-brand: the brand or "";
+brand: the brand or ""; model: exact model name or ""; color: or ""; year: release or purchase year as a number, else null;
 category: one of ${CATS.join(", ")};
-price: asking price (sell) or budget (wanted) in PHP taken from the data, null if not stated;
+price: asking price (sell) or budget (wanted) in full pesos taken from the data (write 13k as 13000), null if not stated;
 area: Philippine town or city named for pickup or location, else "";
 condition: one of new, like new, good, fair, poor, unknown;
 specs: up to 6 short strings such as "16GB RAM" taken only from the data;
@@ -32,6 +32,7 @@ multi: true if the post sells several different items;
 resale: realistic used resale price in PHP for this exact product and condition, null if unsure;
 demand: 0-100, how fast this sells on Philippine second-hand marketplaces;
 flag: short reason if it looks like a scam, fake, parts-only or an advertisement, otherwise null;
+quantity: number of units offered (default 1); warranty: remaining warranty or "" (e.g. "3 months"); receipt: true if a receipt, box or proof of purchase is mentioned; reason: why they are selling, or ""; delivery: meetup, shipping, both or unknown;
 summary: one plain sentence under 140 characters describing what is offered.
 Never invent specs. Never include phone numbers, emails or links.`;
 
@@ -53,17 +54,19 @@ export function heuristic(l) {
   const category = Object.keys(KW).find(k => KW[k].test(text)) || "Other";
   const intent = WANT.test(text) ? "wanted" : "sell";
   return { ...l, name: strip(l.title), brand: "", category, intent, price: l.price > 0 ? l.price : textPrice(l.description || l.title),
-    area: "", conditionTxt: "unknown", specs: [], issues: [], issueLevel: 0, multi: false, resale: null, demand: 50, flag: null, summary: "" };
+    area: "", conditionTxt: "unknown", specs: [], issues: [], issueLevel: 0, multi: false, model: "", color: "", year: null, quantity: 1, warranty: "", receipt: false, reason: "", delivery: "unknown", resale: null, aiResale: null, demand: 50, aiDemand: 50, flag: null, summary: "" };
 }
 const list = (v, n, len) => (Array.isArray(v) ? v : []).map(x => redact(x).slice(0, len)).filter(Boolean).slice(0, n);
 export function norm(a, l) {
   const h = heuristic(l);
-  const price = +a.price > 0 ? +a.price : h.price;
+  const price = l.price > 0 ? l.price : (+a.price > 0 ? +a.price : h.price); // listing price always wins
   return { ...l, name: String(a.name || h.name).toLowerCase().slice(0, 60), brand: redact(a.brand).slice(0, 30), category: CATS.includes(a.category) ? a.category : h.category,
-    intent: ["sell", "wanted", "other"].includes(a.intent) ? a.intent : h.intent, price: price || (l.price > 0 ? l.price : null),
+    intent: ["sell", "wanted", "other"].includes(a.intent) ? a.intent : h.intent, price: price || null,
+    model: redact(a.model).slice(0, 40), color: redact(a.color).slice(0, 20), year: +a.year >= 1990 && +a.year <= 2030 ? +a.year : null, quantity: Math.min(99, Math.max(1, Math.round(+a.quantity) || 1)),
+    warranty: redact(a.warranty).slice(0, 40), receipt: a.receipt === true, reason: redact(a.reason).slice(0, 100), delivery: ["meetup", "shipping", "both"].includes(a.delivery) ? a.delivery : "unknown",
     area: redact(a.area).slice(0, 40), conditionTxt: ["new", "like new", "good", "fair", "poor", "unknown"].includes(a.condition) ? a.condition : "unknown",
     specs: list(a.specs, 6, 40), issues: list(a.issues, 4, 60), issueLevel: [0, 1, 2].includes(+a.issue_level) ? +a.issue_level : 0, multi: a.multi === true,
-    resale: a.resale > 0 ? +a.resale : null, demand: Math.min(100, Math.max(0, +a.demand || 50)), flag: a.flag ? redact(a.flag).slice(0, 80) : null, summary: redact(a.summary).slice(0, 160) };
+    resale: a.resale > 0 ? +a.resale : null, aiResale: a.resale > 0 ? +a.resale : null, demand: Math.min(100, Math.max(0, +a.demand || 50)), aiDemand: Math.min(100, Math.max(0, +a.demand || 50)), flag: a.flag ? redact(a.flag).slice(0, 80) : null, summary: redact(a.summary).slice(0, 160) };
 }
 async function ask(p, payload) {
   const r = await fetch(p.url, { method: "POST", signal: AbortSignal.timeout(60000),
