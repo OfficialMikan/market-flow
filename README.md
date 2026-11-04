@@ -1,5 +1,15 @@
 # Market Flow Agent
 
+## Version 5: what to do (in this order)
+1. Push the new dashboard files (docs/index.html, docs/app.js, docs/sw.js) and the scanner files to GitHub.
+2. Supabase SQL Editor: run `supabase/migration-4.sql` (paste its text). It keeps your passcode but stores it as a hash, locks guessing after 10 wrong tries in 10 minutes, and makes settings readable only with the passcode.
+3. Dashboard > Settings: unlock, save your location ("Use my current location"), check the categories and fees.
+4. Run Actions > scan once.
+
+**New:** zones (near, nearby, far) with far listings kept, Places tab with a map, region-aware location matching, a Facebook group finder, photo evaluation, full details for new listings, fixes for prices written as 13 instead of 13k, buyer details, editable haggling and fee percentages, an offer tracker, and a locked Settings tab.
+
+**Dashboard security:** the page sets a Content-Security-Policy, so only its own script and the pinned map library can run.
+
 ## Version 4: what to do (in this order)
 1. **Database:** in Supabase > SQL Editor run `schema.sql`, then `migration-2.sql`, then `migration-3.sql` (paste each file's text, not its name). Set your own passcode in migration-2 first. Migrations are safe to run twice.
 2. **Keys:** rotate any key that was ever committed. Real values live only in `.env` and GitHub Secrets.
